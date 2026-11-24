@@ -13,6 +13,7 @@ import '../common/empty_view.dart';
 import '../common/progress_halo.dart';
 import '../engine/engine_screen.dart';
 import '../engine/engine_status.dart';
+import '../settings/data_page.dart';
 import '../onboarding/local_install.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
@@ -81,6 +82,8 @@ class _NotRunning extends ConsumerWidget {
     // Nothing on this phone: the one way forward is installing it (or, on a
     // build without the runtime, a remote host).
     final missing = state.status.runtimeMissing;
+    // 坑 2: running out of room is the failure the user can clear right here.
+    final storage = failed && runtimeErrorIsStorage(state.status.error);
     final missingCopy = localMissingCopy(context.l10n, available: state.available);
     return AppPage(
       title: context.l10n.commonWeb,
@@ -137,6 +140,16 @@ class _NotRunning extends ConsumerWidget {
                           style: FilledButton.styleFrom(minimumSize: const Size(160, 44)),
                           onPressed: () => unawaited(openLocalInstall(context)),
                           child: Text(missingCopy.action),
+                        )
+                      : storage
+                      ? FilledButton(
+                          style: FilledButton.styleFrom(minimumSize: const Size(160, 44)),
+                          onPressed: () => unawaited(
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(builder: (_) => const DataPage()),
+                            ),
+                          ),
+                          child: Text(context.l10n.dataCache),
                         )
                       : canStart
                       ? FilledButton(

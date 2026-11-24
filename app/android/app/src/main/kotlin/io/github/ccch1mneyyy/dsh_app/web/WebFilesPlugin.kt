@@ -3,6 +3,8 @@ package io.github.ccch1mneyyy.dsh_app.web
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.os.Process
 import android.webkit.MimeTypeMap
 import android.webkit.WebView
@@ -15,7 +17,10 @@ import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugins.webviewflutter.WebViewFlutterAndroidExternalApi
 import io.github.ccch1mneyyy.dsh_app.MainActivity
 
-/** A foreground web upload: system-selected content URIs, no persistent grant or cache copy. */
+/**
+ * A foreground web upload: system-selected content URIs, no persistent grant. Images are
+ * handed over as a downscaled cache copy (see UploadImage); everything else stays a live URI.
+ */
 class WebFilesPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler,
     PluginRegistry.ActivityResultListener {
     private data class Pending(
@@ -117,7 +122,20 @@ class WebFilesPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHan
                 context.checkUriPermission(uri, Process.myPid(), Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION) ==
                     PackageManager.PERMISSION_GRANTED
         }
-        request.result.success(if (allowed) uris.map { it.toString() }.distinct() else emptyList<String>())
+        if (!allowed) {
+            request.result.success(emptyList<String>())
+            return true
+        }
+        val picked = uris.filterNotNull()
+        val answer = request.result
+        // 简报 #37：图片先缩到长边 1568 / JPEG 80 / ≤1MB 再交给网页。解码在后台线程，
+        // 结果回主线程送出；非图片原样通过。
+        Thread({
+            val out = picked.map { uri ->
+                runCatching { UploadImage.standIn(context, uri) }.getOrDefault(uri).toString()
+            }.distinct()
+            Handler(Looper.getMainLooper()).post { answer.success(out) }
+        }, "dsh-upload-images").start()
         return true
     }
 

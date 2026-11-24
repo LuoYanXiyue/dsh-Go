@@ -118,6 +118,17 @@ String? humanizeRuntimeError(String? raw) {
   return null;
 }
 
+/// Whether a start/install failure is the phone running out of room — the one
+/// failure the user can clear from inside the app (数据 › 清理缓存).
+bool runtimeErrorIsStorage(String? raw) {
+  if (raw == null) return false;
+  final text = raw.trim();
+  return text == '存储空间不足' ||
+      text.startsWith('存储空间不足：需要约 ') ||
+      text.contains('No space left') ||
+      text.contains('ENOSPC');
+}
+
 /// Compact status chip: `● 本机 · 运行中`.
 class EngineStatusChip extends StatelessWidget {
   const EngineStatusChip({super.key, required this.state, this.onTap, this.prefix});
