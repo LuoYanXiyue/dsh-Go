@@ -382,6 +382,7 @@
   "botsTerminalOpening": "Opening terminal…",
   "botsTerminalNone": "No open terminals",
   "botsTerminalNew": "New terminal",
+  "terminalEnvNote": "Files changed under /opt/dsh are replaced when the runtime updates",
   "botsTerminalClose": "Close terminal",
   "botsTerminalChooseShell": "Choose shell",
   "botsTerminalShellFailed": "Couldn’t load shells",

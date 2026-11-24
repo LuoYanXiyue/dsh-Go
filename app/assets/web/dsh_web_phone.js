@@ -233,6 +233,20 @@
     setTimeout(syncBackground, 50);
   });
 
+  // Enter writes a line break instead of sending: the phone's keyboard is the
+  // only Enter there is, and a newline in the composer is far easier to undo
+  // than a message already sent. The composer sends on Enter from its own
+  // keydown; keeping that keydown from reaching it lets the browser's default
+  // (the newline) run, and the page's onChange sees the same input event. The
+  // send button is still right there. Shift+Enter and IME composition are the
+  // composer's own business, as on a desktop.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.defaultPrevented) return;
+    var el = e.target;
+    if (!(el instanceof HTMLTextAreaElement) || el.disabled || el.readOnly) return;
+    e.stopPropagation();
+  }, true);
+
   window.__dshApp = {
     toggleSidebar: function () { setSidebar(!sidebarOpen()); },
     closeSidebar: function () { setSidebar(false); },

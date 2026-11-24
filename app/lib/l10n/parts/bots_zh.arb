@@ -872,6 +872,7 @@
   "botsTerminalOpening": "正在打开终端…",
   "botsTerminalNone": "没有打开的终端",
   "botsTerminalNew": "新建终端",
+  "terminalEnvNote": "在 /opt/dsh 里改的文件，更新运行环境时会被覆盖",
   "botsTerminalClose": "关闭终端",
   "botsTerminalChooseShell": "选择 Shell",
   "botsTerminalShellFailed": "没能读取 Shell",

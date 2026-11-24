@@ -246,6 +246,7 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
                       onActions: (tab) => unawaited(_showActions(tab)),
                       onNew: () => unawaited(workspace.newTerminal()),
                     ),
+                  const _EnvironmentNote(),
                   Expanded(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
@@ -272,6 +273,33 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
     if (trimmed.isEmpty) return '';
     if (trimmed == '/') return '/';
     return trimmed.split('/').last;
+  }
+}
+
+/// The one thing worth knowing before editing files here: the engine lives at
+/// /opt/dsh, and updating the runtime replaces it.
+class _EnvironmentNote extends StatelessWidget {
+  const _EnvironmentNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(TerminalPage.gutter, 8, TerminalPage.gutter, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(AppIcons.info, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              context.l10n.terminalEnvNote,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

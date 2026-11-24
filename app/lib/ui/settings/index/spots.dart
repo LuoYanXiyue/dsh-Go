@@ -90,6 +90,7 @@ enum SettingsPageId {
   systemAccess,
   privacy,
   sharedLinks,
+  data,
   engine,
   remote,
   engineParams,
@@ -375,6 +376,7 @@ String _ai(L10n l) => l.hubGroupAi;
 String _abilities(L10n l) => l.hubGroupCapabilities;
 String _look(L10n l) => l.hubSettingsAppearance;
 String _general(L10n l) => l.hubGroupGeneral;
+String _data(L10n l) => l.hubGroupData;
 String _hosts(L10n l) => l.hubGroupHosts;
 String _help(L10n l) => l.hubGroupHelp;
 
@@ -591,6 +593,14 @@ final _pages = <SettingsPageMeta>[
     group: _general,
     keywords: (l) => l.searchKwPrivacy,
     links: const ['privacy'],
+  ),
+  // 数据
+  SettingsPageMeta(
+    SettingsPageId.data,
+    title: (l) => l.dataTitle,
+    group: _data,
+    freq: Freq.medium,
+    links: const ['data', 'backup'],
   ),
   SettingsPageMeta(
     SettingsPageId.sharedLinks,

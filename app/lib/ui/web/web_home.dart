@@ -25,11 +25,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../backup/backup_runner.dart';
 import '../../l10n/l10n.dart';
 import '../../links/app_links.dart';
 import '../../links/launcher_entries.dart';
 import '../../links/share_intake.dart';
 import '../../pets/overlay_channel.dart' show petOverlayChannelProvider;
+import '../../runtime/runtime_bridge.dart' show RuntimePhase;
+import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../pets/pet_overlay_bridge.dart';
 import '../../state/android_features.dart';
 import '../../state/compose_inbox.dart';
@@ -46,6 +49,7 @@ import '../notify/chat_alert_host.dart';
 import '../pets/pet_settings_page.dart';
 import '../remote/remote_web/remote_web_page.dart';
 import '../shell/page_frame.dart';
+import '../terminal/terminal_page.dart';
 import '../theme/app_icons.dart';
 import 'dsh_web_launcher.dart';
 import 'local_web_screen.dart';
@@ -75,6 +79,9 @@ class _WebHomeState extends ConsumerState<WebHome> {
   /// The conversation the page last reported (or was sent to).
   String? _webSession;
 
+  /// The scheduled-backup check ran on this launch.
+  bool _backupStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +100,13 @@ class _WebHomeState extends ConsumerState<WebHome> {
     });
     ref.listenManual(webOpenProvider, (_, request) {
       if (request != null) _take(request);
+    }, fireImmediately: true);
+    // 设置 › 数据 › 定时备份: an owed backup runs once this launch, in the
+    // background, now that the engine's files are being kept up to date.
+    ref.listenManual(localRuntimeProvider.select((s) => s.status.phase), (previous, next) {
+      if (next != RuntimePhase.running || _backupStarted) return;
+      _backupStarted = true;
+      unawaited(scheduledBackup(ProviderScope.containerOf(context, listen: false)));
     }, fireImmediately: true);
   }
 
@@ -146,7 +160,15 @@ class _WebHomeState extends ConsumerState<WebHome> {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(problems.first)));
   }
 
-  Widget _handle(double size) => WebHandleButton(size: size);
+  Widget _handle(double size) => WebHandleButton(size: size, onTerminal: _openTerminal);
+
+  /// 终端: the conversation's shell, full screen, as the native interface has
+  /// it. Nothing to open while the page shows no conversation.
+  Future<void> _openTerminal() async {
+    final id = _webSession;
+    if (id == null || id.isEmpty || !mounted) return;
+    await Navigator.of(context, rootNavigator: true).push(TerminalPage.route(id));
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -54,6 +54,7 @@ import '../update/update_tiles.dart' show UpdateBadge;
 import 'about_page.dart';
 import 'appearance/appearance_page.dart';
 import 'background_guide_page.dart';
+import 'data_page.dart';
 import 'diagnostics_page.dart';
 import 'interface_page.dart';
 import 'language_tile.dart';
@@ -277,6 +278,18 @@ class SettingsScreen extends ConsumerWidget {
               tint: SettingsHues.general,
               spot: SettingsIndex.entry(SettingsPageId.privacy),
               onTap: () => _push(context, const PrivacyPage()),
+            ),
+          ],
+        ),
+        SettingsSection(
+          title: l10n.hubGroupData,
+          children: [
+            SettingsTile(
+              key: const ValueKey('settings-data'),
+              icon: AppIcons.archive,
+              tint: SettingsHues.general,
+              spot: SettingsIndex.entry(SettingsPageId.data),
+              onTap: () => _push(context, const DataPage()),
             ),
           ],
         ),

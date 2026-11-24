@@ -123,6 +123,7 @@ class DiagnosticsPage extends ConsumerWidget {
             RuntimeLaunchFacts(status: status),
             InfoRow(label: 'DSH', value: status.dshVersion ?? '—', mono: true),
             InfoRow(label: 'Node.js', value: status.nodeVersion ?? '—', mono: true),
+            if (status.healthyAt case final at?) InfoRow(label: l10n.diagnosticsUptime, value: _uptime(at)),
             if (status.error case final error?) InfoRow(label: l10n.pluginsErrorLabel, value: error, mono: true),
           ],
         ),
@@ -162,6 +163,16 @@ class DiagnosticsPage extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// How long the engine has been up, as `3h 12m`: hours and minutes read the
+/// same in either language, so the label is the only word to translate.
+String _uptime(DateTime since) {
+  final elapsed = DateTime.now().difference(since);
+  if (elapsed.isNegative) return '—';
+  final hours = elapsed.inHours;
+  final minutes = elapsed.inMinutes % 60;
+  return hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
 }
 
 /// One opt-in, one status, one ordinary report-session entry.

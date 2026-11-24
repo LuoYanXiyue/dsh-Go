@@ -1,0 +1,107 @@
+{
+  "hubGroupData": "数据",
+  "dataTitle": "数据",
+  "dataIntro": "会话、记忆、插件清单都在这台手机上。导出成一个 zip，换手机或重装之后能整个恢复。",
+  "dataExport": "导出数据",
+  "dataExportHint": "会话、记忆、插件清单打成一个 zip",
+  "dataExportEmpty": "运行环境还没装好，没有可导出的数据",
+  "dataExportWhere": "存好之后可以自己挪到「下载」或网盘",
+  "dataRestore": "从备份恢复",
+  "dataRestoreHint": "选一个导出的 zip，换回全部数据",
+  "dataRestoreWarning": "恢复会替换现在的会话、记忆和插件清单。现在这一份会先改名留着，随时能找回来。恢复期间引擎会先停下。",
+  "dataRestoreNow": "恢复",
+  "dataCancel": "取消",
+  "dataRestored": "已恢复。旧数据留在 {path}",
+  "@dataRestored": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dataScheduled": "定时备份",
+  "dataScheduledHint": "在后台按周期导出，只留最近几份",
+  "dataInterval": "周期",
+  "dataIntervalDays": "{count} 天",
+  "@dataIntervalDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataKeep": "保留",
+  "dataKeepCount": "{count} 份",
+  "@dataKeepCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataLast": "上次备份",
+  "dataLastNever": "还没有备份过",
+  "dataLastAt": "{when}",
+  "@dataLastAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "dataCache": "清理缓存",
+  "dataCacheHint": "可重建的缓存和旧备份，不动会话",
+  "dataCleared": "已清理 {size}",
+  "@dataCleared": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "dataUsed": "已用 {size}",
+  "@dataUsed": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "dataUninstallTitle": "卸载之前",
+  "dataUninstall": "卸载这个 App 会连本地所有会话和记忆一起删掉。想留着就导出一次。",
+  "dataWorking": "正在处理… {percent}%",
+  "@dataWorking": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "dataFailed": "没成功：{why}",
+  "@dataFailed": {
+    "placeholders": {
+      "why": {
+        "type": "String"
+      }
+    }
+  },
+  "dataErrorMissing": "运行环境还没有装好",
+  "dataErrorNotBackup": "这个 zip 不是本 App 的数据",
+  "dataErrorSpace": "空间不够",
+  "dataExported": "已导出到 {where}",
+  "@dataExported": {
+    "placeholders": {
+      "where": {
+        "type": "String"
+      }
+    }
+  },
+  "dataExportDone": "已导出 {size}",
+  "@dataExportDone": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  }
+}

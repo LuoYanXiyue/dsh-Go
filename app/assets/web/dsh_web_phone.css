@@ -70,9 +70,13 @@ body > [class*="_overlay"] {
   opacity: 1 !important;
   visibility: visible !important;
 }
-[class*="_sessionRow"][class*="_selected"] [class*="_time"],
 [class*="_sessionRow"][class*="_selected"] [class*="_pinIndicator"] {
   display: none !important;
+}
+/* The official touch layout hides the row's time to make room for its quick
+   actions; on the open conversation both stay, and the title clips first. */
+[class*="_sessionRow"][class*="_selected"] [class*="_timestamp"] {
+  display: inline-flex !important;
 }
 
 /* ── Drawer layout: one column, the sidebar a drawer ──────────────────────── */

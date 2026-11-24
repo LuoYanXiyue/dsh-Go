@@ -80,13 +80,17 @@ class WebMarkButton extends StatelessWidget {
 
 /// The handle: 网页模式's one key, opening the app's own pages over the page.
 class WebHandleButton extends StatelessWidget {
-  const WebHandleButton({super.key, required this.size, this.onNative});
+  const WebHandleButton({super.key, required this.size, this.onNative, this.onTerminal});
 
   final double size;
 
   /// 切回原生界面 (the caller hands the conversation over first); null where
   /// there is no native interface to go back to.
   final Future<void> Function()? onNative;
+
+  /// 终端: the app's own full-screen terminal for the conversation on screen;
+  /// null while no conversation is open.
+  final Future<void> Function()? onTerminal;
 
   static String get tooltip => appL10n.webNativeFeatures;
 
@@ -97,19 +101,26 @@ class WebHandleButton extends StatelessWidget {
       size: size,
       tooltip: tooltip,
       label: tooltip,
-      onTap: () => unawaited(showWebHandleSheet(context, onNative: onNative)),
+      onTap: () => unawaited(showWebHandleSheet(context, onNative: onNative, onTerminal: onTerminal)),
     );
   }
 }
 
-/// 切回原生界面 · App 设置 · 切换主机.
-Future<void> showWebHandleSheet(BuildContext context, {Future<void> Function()? onNative}) =>
-    showAppSheet<void>(context, builder: (_) => _HandleSheet(onNative: onNative));
+/// 切回原生界面 · 终端 · App 设置 · 切换主机.
+Future<void> showWebHandleSheet(
+  BuildContext context, {
+  Future<void> Function()? onNative,
+  Future<void> Function()? onTerminal,
+}) => showAppSheet<void>(
+  context,
+  builder: (_) => _HandleSheet(onNative: onNative, onTerminal: onTerminal),
+);
 
 class _HandleSheet extends ConsumerWidget {
-  const _HandleSheet({required this.onNative});
+  const _HandleSheet({required this.onNative, required this.onTerminal});
 
   final Future<void> Function()? onNative;
+  final Future<void> Function()? onTerminal;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -138,6 +149,17 @@ class _HandleSheet extends ConsumerWidget {
                   onTap: () {
                     navigator.pop();
                     unawaited(native());
+                  },
+                ),
+              if (onTerminal case final terminal?)
+                SettingsTile(
+                  key: const ValueKey('web-handle-terminal'),
+                  icon: AppIcons.terminal,
+                  tinted: false,
+                  title: context.l10n.botsTerminal,
+                  onTap: () {
+                    navigator.pop();
+                    unawaited(terminal());
                   },
                 ),
               SettingsTile(
