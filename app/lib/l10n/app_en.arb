@@ -6049,6 +6049,7 @@
   "shellRuntimeAlmostDone": "Almost done",
   "shellRuntimeSecondsRemaining": "{count, plural, =1{About 1 second} other{About {count} seconds}}",
   "shellRuntimeMinutesRemaining": "{count, plural, =1{About 1 minute} other{About {count} minutes}}",
+  "shellRuntimeSpeed": "{speed} MB/s",
   "shellEngineLogs": "Engine logs",
   "shellWelcomeMessage": "The DeepSeek agent,\nin your pocket",
   "shellGetStarted": "Start",

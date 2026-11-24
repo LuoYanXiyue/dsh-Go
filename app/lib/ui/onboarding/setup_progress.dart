@@ -143,11 +143,59 @@ class InstallEtaController extends Notifier<Duration?> {
 
 final installEtaProvider = NotifierProvider<InstallEtaController, Duration?>(InstallEtaController.new);
 
-/// 「48 / 120 MB · 约 30 秒」: what is under the unpack's progress.
-String? installMetaLine(L10n l10n, RuntimeProgressEvent? progress, Duration? eta) {
+/// How fast the unpack is going, in bytes a second; null until there is enough
+/// to go on. Sampled from the same progress reports as the estimate above, so
+/// the speed shown and the time it implies agree.
+class InstallSpeedController extends Notifier<int?> {
+  DateTime? _t0;
+  int _b0 = 0;
+
+  @override
+  int? build() {
+    ref.listen(localRuntimeProvider.select((s) => s.progress), (_, next) => _track(next));
+    // A new unpack (a retry) starts its own samples.
+    ref.listen(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.installing), (was, now) {
+      if (now && was == false) _reset();
+    });
+    return null;
+  }
+
+  void _reset() {
+    _t0 = null;
+    _b0 = 0;
+    state = null;
+  }
+
+  void _track(RuntimeProgressEvent? progress) {
+    if (progress == null) return;
+    final now = DateTime.now();
+    if (_t0 == null) {
+      _t0 = now;
+      _b0 = progress.done;
+      return;
+    }
+    final ms = now.difference(_t0!).inMilliseconds;
+    final gained = progress.done - _b0;
+    if (ms < 1000 || gained <= 0) return;
+    _t0 = now;
+    _b0 = progress.done;
+    final perSecond = (gained * 1000 / ms).round();
+    // Smoothed, like the estimate, so the figure doesn't jump with each chunk.
+    final was = state;
+    state = was == null ? perSecond : ((was * 3 + perSecond) / 4).round();
+  }
+}
+
+final installSpeedProvider = NotifierProvider<InstallSpeedController, int?>(InstallSpeedController.new);
+
+/// 「48 / 120 MB · 3.2 MB/s · 约 30 秒」: what is under the unpack's progress.
+String? installMetaLine(L10n l10n, RuntimeProgressEvent? progress, Duration? eta, [int? bytesPerSecond]) {
   if (progress == null) return null;
   String mb(int bytes) => (bytes / (1024 * 1024)).toStringAsFixed(0);
   final size = progress.total > 0 ? '${mb(progress.done)} / ${mb(progress.total)} MB' : null;
+  final speed = bytesPerSecond == null
+      ? null
+      : l10n.shellRuntimeSpeed((bytesPerSecond / (1024 * 1024)).toStringAsFixed(1));
   final String? remaining;
   if (eta == null) {
     remaining = null;
@@ -158,7 +206,7 @@ String? installMetaLine(L10n l10n, RuntimeProgressEvent? progress, Duration? eta
   } else {
     remaining = l10n.shellRuntimeMinutesRemaining((eta.inSeconds / 60).ceil());
   }
-  final line = [?size, ?remaining].join(' · ');
+  final line = [?size, ?speed, ?remaining].join(' · ');
   return line.isEmpty ? null : line;
 }
 
@@ -462,6 +510,7 @@ class _SetupStatusSheet extends ConsumerWidget {
     final runtime = ref.watch(setupRuntimeProvider);
     final state = ref.watch(localRuntimeProvider);
     final eta = ref.watch(installEtaProvider);
+    final speed = ref.watch(installSpeedProvider);
     final failed = runtime == SetupRuntime.failed;
     final ready = runtime == SetupRuntime.ready;
     final progress = runtime == SetupRuntime.unpacking ? state.progress : null;
@@ -480,7 +529,7 @@ class _SetupStatusSheet extends ConsumerWidget {
         : ready
         ? l10n.shellRuntimeLocalOnly
         : l10n.shellRuntimeFirstSetup;
-    final meta = installMetaLine(l10n, progress, eta);
+    final meta = installMetaLine(l10n, progress, eta, speed);
     final navigator = Navigator.of(context);
 
     return SingleChildScrollView(

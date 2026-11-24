@@ -60,6 +60,14 @@
       }
     }
   },
+  "shellRuntimeSpeed": "{speed} MB/s",
+  "@shellRuntimeSpeed": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
   "shellEngineLogs": "引擎日志",
   "shellWelcomeMessage": "把 DeepSeek 智能体\n装进口袋",
   "shellGetStarted": "开始",

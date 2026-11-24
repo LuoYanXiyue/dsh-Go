@@ -204,7 +204,9 @@ class _RuntimeSetupPageState extends ConsumerState<RuntimeSetupPage> {
       _SetupView.failed when state.status.keepFailed => l10n.shellRuntimeRestoreFailed,
       _SetupView.failed => humanizeRuntimeError(state.status.error) ?? l10n.shellRuntimeExtractFailed,
     };
-    final meta = view == _SetupView.installing ? installMetaLine(l10n, progress, ref.watch(installEtaProvider)) : null;
+    final meta = view == _SetupView.installing
+        ? installMetaLine(l10n, progress, ref.watch(installEtaProvider), ref.watch(installSpeedProvider))
+        : null;
     // Set up and waiting: when a notification can say it's done, say so. HarmonyOS
     // has none for it, and suspends the app if it leaves the screen.
     final ohos = ref.watch(operatingSystemProvider) == 'ohos';

@@ -329,7 +329,7 @@ class _AwaitRuntime extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final colors = DshColors.of(context);
     final progress = ref.watch(localRuntimeProvider.select((s) => s.progress));
-    final meta = installMetaLine(l10n, progress, ref.watch(installEtaProvider));
+    final meta = installMetaLine(l10n, progress, ref.watch(installEtaProvider), ref.watch(installSpeedProvider));
     return OnboardingScaffold(
       showRuntime: false,
       children: [
