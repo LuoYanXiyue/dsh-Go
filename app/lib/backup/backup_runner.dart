@@ -78,7 +78,9 @@ bool _running = false;
 ///
 /// Only once the engine runs (its files are the ones being copied) and only
 /// one at a time; a failure is left for the next launch, since nothing is
-/// waiting on it.
+/// waiting on it. Unlike 导出数据, this does not stop the engine: it runs while
+/// the person is using the app. Conversations are append-only, so the worst a
+/// copy can catch is a half-written last line.
 Future<void> scheduledBackup(ProviderContainer container, {DateTime? at}) async {
   if (_running) return;
   final controller = container.read(backupPrefsProvider.notifier);

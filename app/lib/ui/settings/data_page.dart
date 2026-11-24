@@ -80,8 +80,12 @@ class _DataPageState extends ConsumerState<DataPage> {
   Future<void> _export() async {
     final l10n = context.l10n;
     setState(() => _progress = 0);
+    final runtime = ref.read(localRuntimeProvider.notifier);
+    final wasRunning = ref.read(localRuntimeProvider).status.phase == RuntimePhase.running;
     File? zip;
     try {
+      // A conversation written mid-copy is a torn file in the zip.
+      if (wasRunning) await _stopEngine(runtime);
       final backup = await DshHomeBackup.local();
       if (backup == null || !backup.exists) throw const BackupException('missing');
       final folder = Directory('${(await getTemporaryDirectory()).path}/data-export');
@@ -104,6 +108,7 @@ class _DataPageState extends ConsumerState<DataPage> {
     } catch (error) {
       _tell(l10n.dataFailed('$error'));
     } finally {
+      if (wasRunning) unawaited(runtime.start());
       if (mounted) setState(() => _progress = null);
       if (zip != null) {
         try {
