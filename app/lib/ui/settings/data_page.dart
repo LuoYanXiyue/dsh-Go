@@ -144,7 +144,7 @@ class _DataPageState extends ConsumerState<DataPage> {
       final kept = await backup.restoreFrom(File(path), onProgress: _onProgress);
       if (wasRunning) unawaited(runtime.start());
       if (!mounted) return;
-      _tell(kept == null ? l10n.dataRestore : l10n.dataRestored(kept.path));
+      _tell(kept == null ? l10n.dataRestoreDone : l10n.dataRestored(kept.path));
       unawaited(_measure());
     } on BackupException catch (e) {
       if (wasRunning) unawaited(runtime.start());

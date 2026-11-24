@@ -63,20 +63,28 @@ body > [class*="_overlay"] {
   height: auto !important;
 }
 
-/* Touch: row actions (more / archive / pin) only appear on mouse hover;
-   show them on the selected session so they can be reached at all. */
-[class*="_sessionRow"][class*="_selected"] [class*="_rowActions"] {
-  display: flex !important;
+/* Touch: the official layout trades the row's time for the "…" its hover would
+   reveal. A phone has no hover, and the time is what one reads there, so the
+   time stays on every row and the actions give way to it — they come back for
+   the row being pressed (a long press opens the same menu, see
+   dsh_web_phone.js), for the row whose menu is open, and for the conversation
+   being read. */
+[class*="_sessionRow"] [class*="_timestamp"] {
+  display: inline-flex !important;
+}
+[class*="_sessionRow"] [class*="_rowActions"] {
+  display: none !important;
+}
+[class*="_sessionRow"][class*="_selected"] [class*="_rowActions"],
+[class*="_sessionRow"][class*="_menuOpen"] [class*="_rowActions"],
+[class*="_sessionRow"][data-dsh-app-pressed] [class*="_rowActions"] {
+  display: inline-flex !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
-[class*="_sessionRow"][class*="_selected"] [class*="_pinIndicator"] {
+[class*="_sessionRow"][class*="_selected"] [class*="_pinIndicator"],
+[class*="_sessionRow"][data-dsh-app-pressed] [class*="_pinIndicator"] {
   display: none !important;
-}
-/* The official touch layout hides the row's time to make room for its quick
-   actions; on the open conversation both stay, and the title clips first. */
-[class*="_sessionRow"][class*="_selected"] [class*="_timestamp"] {
-  display: inline-flex !important;
 }
 
 /* ── Drawer layout: one column, the sidebar a drawer ──────────────────────── */

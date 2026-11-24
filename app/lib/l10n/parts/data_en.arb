@@ -33,5 +33,6 @@
   "dataErrorNotBackup": "That zip is not this app's data",
   "dataErrorSpace": "Not enough room",
   "dataExported": "Exported to {where}",
-  "dataExportDone": "Exported {size}"
+  "dataExportDone": "Exported {size}",
+  "dataRestoreDone": "Restored"
 }

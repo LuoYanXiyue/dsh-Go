@@ -103,5 +103,6 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dataRestoreDone": "已恢复"
 }

@@ -247,6 +247,87 @@
     e.stopPropagation();
   }, true);
 
+  // A session row's menu — rename, delete, pin — hangs off the "…" the official
+  // sidebar reveals on hover. On touch the row's time is the thing to read, so
+  // the actions give way to it (dsh_web_phone.css) and come back for the row
+  // being pressed; a long press opens the menu in the same gesture. The menu is
+  // positioned from the trigger's own rect, so the trigger has to be laid out
+  // before the click (hence the attribute first, the click a frame later).
+  var PRESSED = 'data-dsh-app-pressed';
+  var pressTimer = 0;
+  var pressStart = null;
+  var pressed = null;
+  function sessionRow(el) {
+    return el && el.closest ? el.closest('[role="treeitem"][class*="_sessionRow"]') : null;
+  }
+  function release() {
+    clearTimeout(pressTimer);
+    pressTimer = 0;
+    pressStart = null;
+    if (pressed) {
+      pressed.removeAttribute(PRESSED);
+      pressed = null;
+    }
+  }
+  function openRowMenu(row) {
+    var trigger = row.querySelector('[class*="_rowActions"] button[data-context-menu-trigger]');
+    if (!trigger) return;
+    pressed = row;
+    row.setAttribute(PRESSED, '');
+    // The lift this gesture ends with must not also open the conversation.
+    swallowClick = true;
+    setTimeout(function () { swallowClick = false; }, 600);
+    setTimeout(function () {
+      try {
+        trigger.click();
+      } finally {
+        setTimeout(function () { if (pressed === row) release(); }, 320);
+      }
+    }, 16);
+  }
+  document.addEventListener(
+    'pointerdown',
+    function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var row = sessionRow(e.target);
+      if (!row) return;
+      release();
+      pressStart = { x: e.clientX, y: e.clientY, row: row };
+      pressTimer = setTimeout(function () {
+        var start = pressStart;
+        if (!start) return;
+        pressStart = null;
+        openRowMenu(start.row);
+      }, 450);
+    },
+    true
+  );
+  // Scrolling the list (or any real movement) is not a press.
+  document.addEventListener(
+    'pointermove',
+    function (e) {
+      if (!pressStart) return;
+      if (Math.abs(e.clientX - pressStart.x) < 10 && Math.abs(e.clientY - pressStart.y) < 10) return;
+      clearTimeout(pressTimer);
+      pressTimer = 0;
+      pressStart = null;
+    },
+    true
+  );
+  // Lifting before the press is long enough is just a tap (the conversation
+  // opens as usual).
+  document.addEventListener(
+    'pointerup',
+    function () {
+      if (!pressStart) return;
+      clearTimeout(pressTimer);
+      pressTimer = 0;
+      pressStart = null;
+    },
+    true
+  );
+  document.addEventListener('pointercancel', release, true);
+
   window.__dshApp = {
     toggleSidebar: function () { setSidebar(!sidebarOpen()); },
     closeSidebar: function () { setSidebar(false); },
