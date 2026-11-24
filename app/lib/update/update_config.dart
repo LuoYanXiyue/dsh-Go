@@ -23,20 +23,27 @@ library;
 /// GitHub repository the releases live in.
 const updateRepo = 'ccch1mneyyy/dsh-go';
 
+/// Where *this* app's own APKs are published. The phone build is installed by
+/// hand and has no release of its own (简报 19: no update market), so it must
+/// not be told about [updateRepo]'s releases: those are another package and
+/// installing one would leave two apps behind.
+const updateReleaseRepo = 'LuoYanXiyue/dsh-Go';
+
 /// `releases/latest` of the REST API: tag, notes, assets with sizes and
 /// SHA-256 digests. Unauthenticated: 60 requests per hour per IP.
-final githubLatestApi = Uri.parse('https://api.github.com/repos/$updateRepo/releases/latest');
+final githubLatestApi = Uri.parse('https://api.github.com/repos/$updateReleaseRepo/releases/latest');
 
 /// The latest release's page, for "open in browser".
-final githubReleasesPage = Uri.parse('https://github.com/$updateRepo/releases/latest');
+final githubReleasesPage = Uri.parse('https://github.com/$updateReleaseRepo/releases/latest');
 
 /// A file attached to the latest release. github.com redirects to the asset
 /// CDN; not rate limited like the API and reachable through download mirrors.
-Uri githubLatestAsset(String name) => Uri.parse('https://github.com/$updateRepo/releases/latest/download/$name');
+Uri githubLatestAsset(String name) =>
+    Uri.parse('https://github.com/$updateReleaseRepo/releases/latest/download/$name');
 
 /// A file attached to the release tagged [tag].
 Uri githubReleaseAsset(String tag, String name) =>
-    Uri.parse('https://github.com/$updateRepo/releases/download/$tag/$name');
+    Uri.parse('https://github.com/$updateReleaseRepo/releases/download/$tag/$name');
 
 /// The share host (services/share-worker). It serves the beta channel under
 /// `/beta/`; public files come from [updateDownloadOrigin].
@@ -145,7 +152,9 @@ const publicMirrors = [
 ];
 
 const _unset = '\u0000';
-const _mirrorDefine = String.fromEnvironment('DSH_UPDATE_MIRROR', defaultValue: updateDownloadOrigin);
+// 手机版 ships without an update source of its own (简报 19): the empty
+// default leaves GitHub ([updateReleaseRepo]) and the accelerators.
+const _mirrorDefine = String.fromEnvironment('DSH_UPDATE_MIRROR', defaultValue: '');
 const _feedDefine = String.fromEnvironment('DSH_UPDATE_FEED', defaultValue: _unset);
 const _mirrorsDefine = String.fromEnvironment('DSH_UPDATE_MIRRORS', defaultValue: _unset);
 const _betaTokenDefine = String.fromEnvironment('DSH_BETA_CHANNEL_TOKEN');

@@ -46,12 +46,19 @@ void main() {
       expect([for (final e in endpoints) e.url.host], isNot(contains('go.dshtui.com')));
     });
 
-    test('the shipped configuration (no token in tests) is the same', () {
+    // 手机版: no release copy of its own (简报 19), so the shipped app asks
+    // GitHub and the accelerators only.
+    test('what this build ships asks GitHub and the accelerators, no dl copy', () {
       final shipped = defaultUpdateSources();
       expect(shipped.channel, isNull);
-      expect(shipped.feed.toString(), _dlFeed);
-      expect(shipped.metadataEndpoints().map((e) => e.id), sources.metadataEndpoints().map((e) => e.id));
-      expect(shipped.mirrors.map((m) => m.id), sources.mirrors.map((m) => m.id));
+      expect(shipped.feed, isNull);
+      expect(shipped.mirrors.map((m) => m.id), ['github', 'ghfast', 'gh-proxy']);
+      expect(shipped.metadataEndpoints().map((e) => e.id), [
+        'manifest:github',
+        'manifest:ghfast',
+        'manifest:gh-proxy',
+        'api',
+      ]);
     });
 
     test('the API is not moved ahead by having answered last time; the others are', () {
