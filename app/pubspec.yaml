@@ -55,6 +55,8 @@ dependencies:
   val_latex_flutter: ^0.1.3
   re_highlight: ^0.0.3
   path_provider: ^2.1.6
+  # 数据导出/恢复 join paths under DSH_HOME (already in the lock as a transitive).
+  path: ^1.9.1
   url_launcher: ^6.3.3
   dsh_client:
     path: ../packages/dsh_client

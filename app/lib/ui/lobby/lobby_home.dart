@@ -24,7 +24,6 @@ import '../settings/settings_widgets.dart';
 import '../shell/page_frame.dart';
 import '../terminal/terminal_page.dart';
 import '../theme/app_icons.dart';
-import '../theme/theme.dart';
 import '../web/web_home.dart';
 
 class LobbyHome extends ConsumerWidget {
@@ -40,8 +39,8 @@ class LobbyHome extends ConsumerWidget {
     final busy = phase == RuntimePhase.starting || phase == RuntimePhase.installing;
     final failed = phase == RuntimePhase.error;
     final session = ref.watch(currentSessionProvider);
-    void push(Widget page) =>
-        unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page)));
+    final navigator = Navigator.of(context);
+    void push(Widget page) => unawaited(navigator.push(MaterialPageRoute<void>(builder: (_) => page)));
     return AppPage.list(
       title: 'DSH',
       subtitle: Text(
@@ -119,7 +118,7 @@ class LobbyHome extends ConsumerWidget {
               tint: SettingsHues.general,
               title: l10n.botsTerminal,
               subtitle: session == null ? l10n.lobbyTerminalHint : null,
-              onTap: session == null ? null : () => push(TerminalPage.route(session)),
+              onTap: session == null ? null : () => unawaited(navigator.push(TerminalPage.route(session))),
             ),
             SettingsTile(
               key: const ValueKey('lobby-diagnostics'),
