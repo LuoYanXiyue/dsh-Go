@@ -78,14 +78,15 @@ class WebMarkButton extends StatelessWidget {
   }
 }
 
-/// The handle: 网页模式's one key, opening its ways back to the native app.
+/// The handle: 网页模式's one key, opening the app's own pages over the page.
 class WebHandleButton extends StatelessWidget {
-  const WebHandleButton({super.key, required this.size, required this.onNative});
+  const WebHandleButton({super.key, required this.size, this.onNative});
 
   final double size;
 
-  /// 切回原生界面 (the caller hands the conversation over first).
-  final Future<void> Function() onNative;
+  /// 切回原生界面 (the caller hands the conversation over first); null where
+  /// there is no native interface to go back to.
+  final Future<void> Function()? onNative;
 
   static String get tooltip => appL10n.webNativeFeatures;
 
@@ -102,13 +103,13 @@ class WebHandleButton extends StatelessWidget {
 }
 
 /// 切回原生界面 · App 设置 · 切换主机.
-Future<void> showWebHandleSheet(BuildContext context, {required Future<void> Function() onNative}) =>
+Future<void> showWebHandleSheet(BuildContext context, {Future<void> Function()? onNative}) =>
     showAppSheet<void>(context, builder: (_) => _HandleSheet(onNative: onNative));
 
 class _HandleSheet extends ConsumerWidget {
   const _HandleSheet({required this.onNative});
 
-  final Future<void> Function() onNative;
+  final Future<void> Function()? onNative;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -126,18 +127,19 @@ class _HandleSheet extends ConsumerWidget {
           SheetGroup(
             margin: const EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.inset, 12),
             children: [
-              SettingsTile(
-                key: const ValueKey('web-handle-native'),
-                // 界面's mark, as in 设置 and the drawer.
-                icon: AppIcons.swap,
-                tinted: false,
-                title: context.l10n.webSwitchToNative,
-                chevron: false,
-                onTap: () {
-                  navigator.pop();
-                  unawaited(onNative());
-                },
-              ),
+              if (onNative case final native?)
+                SettingsTile(
+                  key: const ValueKey('web-handle-native'),
+                  // 界面's mark, as in 设置 and the drawer.
+                  icon: AppIcons.swap,
+                  tinted: false,
+                  title: context.l10n.webSwitchToNative,
+                  chevron: false,
+                  onTap: () {
+                    navigator.pop();
+                    unawaited(native());
+                  },
+                ),
               SettingsTile(
                 key: const ValueKey('web-handle-settings'),
                 icon: AppIcons.settings,

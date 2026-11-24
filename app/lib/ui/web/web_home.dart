@@ -146,16 +146,7 @@ class _WebHomeState extends ConsumerState<WebHome> {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(problems.first)));
   }
 
-  /// 切回原生界面: the native home opens on the conversation the page shows.
-  Future<void> _toNative() async {
-    final id = _webSession;
-    if (id != null && ref.read(currentSessionProvider) != id) {
-      ref.read(currentSessionProvider.notifier).select(id);
-    }
-    await ref.read(uiModeProvider.notifier).set(UiMode.native);
-  }
-
-  Widget _handle(double size) => WebHandleButton(size: size, onNative: _toNative);
+  Widget _handle(double size) => WebHandleButton(size: size);
 
   @override
   Widget build(BuildContext context) {

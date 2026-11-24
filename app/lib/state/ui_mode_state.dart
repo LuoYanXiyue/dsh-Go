@@ -40,8 +40,6 @@ class UiModeState {
 }
 
 class UiModeController extends Notifier<UiModeState> {
-  static const key = 'ui.mode';
-
   @override
   UiModeState build() {
     unawaited(_load());
@@ -49,15 +47,9 @@ class UiModeController extends Notifier<UiModeState> {
   }
 
   Future<void> _load() async {
-    var mode = UiMode.native;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      mode = UiMode.values.asNameMap()[prefs.getString(key)] ?? UiMode.native;
-    } catch (_) {
-      // No preferences backend (tests) or an unreadable store: native.
-    }
-    // A switch made while reading back wins over the stored value.
-    if (!state.loaded) state = UiModeState(mode: mode, loaded: true);
+    // 这是手机版: the official web app is the whole interface, so there is no
+    // stored choice to read back — the interface cannot be anything else.
+    if (!state.loaded) state = const UiModeState(mode: UiMode.web, loaded: true);
   }
 
   /// Switches and remembers it for the next launch.
