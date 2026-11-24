@@ -5,7 +5,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart' show kLongPressTimeout, kPrimaryButton, kTouchSlop;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kLongPressTimeout, kPrimaryButton, kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -123,6 +123,7 @@ class TerminalScreenState extends ConsumerState<TerminalScreen> with FieldPaste<
   TerminalTab get _tab => widget.tab;
   Terminal get _terminal => widget.tab.terminal;
   bool get _canType => _tab.phase == TerminalPhase.live && _tab.writable;
+  bool get _imeComposing => _keyboard.currentState?.composing ?? false;
 
   TerminalWorkspace get _workspace => ref.read(terminalWorkspaceProvider(widget.sessionId).notifier);
 
@@ -206,11 +207,14 @@ class TerminalScreenState extends ConsumerState<TerminalScreen> with FieldPaste<
       final copy = event.logicalKey == LogicalKeyboardKey.keyC && (apple || hardware.isShiftPressed);
       final paste = event.logicalKey == LogicalKeyboardKey.keyV;
       if (copy || paste) {
+        // Pasting is terminal input. Let the IME finish before inserting it,
+        // just as for ordinary hardware keys; copying sends no input.
+        if (paste && _imeComposing) return KeyEventResult.skipRemainingHandlers;
         if (event is KeyDownEvent) unawaited(copy ? _copy() : pasteClipboard());
         return KeyEventResult.handled;
       }
     }
-    if (_keyboard.currentState?.composing ?? false) return KeyEventResult.skipRemainingHandlers;
+    if (_imeComposing) return KeyEventResult.skipRemainingHandlers;
     if (event is KeyUpEvent || !widget.modifiers.any) return KeyEventResult.ignored;
     final character = event.character;
     if (character == null || character.runes.length != 1 || character.codeUnitAt(0) < 0x20) {
@@ -235,10 +239,11 @@ class TerminalScreenState extends ConsumerState<TerminalScreen> with FieldPaste<
   void _pointerDown(PointerDownEvent event) {
     _pointers[event.pointer] = event.position;
     // xterm 4.0.0 does not dispatch TerminalView.onTapUp for primary taps.
-    // Observe the short single-pointer tap here without taking its scroll,
-    // selection, or terminal mouse reporting out of the gesture arena.
+    // Observe short touchscreen taps without competing with xterm's gestures.
+    // Mouse clicks and short, precise selection drags stay with xterm.
     _cancelKeyboardTap();
-    if (_pointers.length == 1 && event.buttons == kPrimaryButton) {
+    final touchscreen = event.kind == PointerDeviceKind.touch || event.kind == PointerDeviceKind.stylus;
+    if (touchscreen && _pointers.length == 1 && event.buttons == kPrimaryButton) {
       _keyboardTap = (origin: event.position, deadline: Timer(kLongPressTimeout, _cancelKeyboardTap));
     }
     if (_pointers.length == 2) {
@@ -315,11 +320,12 @@ class TerminalScreenState extends ConsumerState<TerminalScreen> with FieldPaste<
 
   Future<void> pasteClipboard() async {
     final terminal = _terminal;
-    if (!_canType || !_ownsInput(terminal) || _pasteRequest != null) return;
+    if (!_canType || _imeComposing || !_ownsInput(terminal) || _pasteRequest != null) return;
     final request = _pasteRequest = Object();
     try {
       final text = await readClipboard();
-      if (!mounted || _pasteRequest != request || !_ownsInput(terminal)) return;
+      // A new composition can start while the system owns the clipboard read.
+      if (!mounted || _pasteRequest != request || _imeComposing || !_ownsInput(terminal)) return;
       if (text == null || text.isEmpty) {
         if (ref.read(operatingSystemProvider) != 'ohos') showBriefNotice(context, appL10n.statePasteEmpty);
         return;
@@ -462,7 +468,7 @@ class TerminalScreenState extends ConsumerState<TerminalScreen> with FieldPaste<
       key: _keyboard,
       focusNode: widget.focusNode,
       enabled: canType,
-      resetOnAndroidDismissal: android,
+      deferAfterAndroidInsetLoss: android,
       onText: _onText,
       onBackspace: _onBackspace,
       onEnter: _onEnter,

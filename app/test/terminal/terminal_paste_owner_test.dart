@@ -119,6 +119,61 @@ void main() {
     expect(backend.attachOf('b').written, isEmpty);
   });
 
+  testWidgets('hardware paste respects IME composition before the read and on a late reply', (tester) async {
+    final backend = FakeTerminalBackend();
+    final clipboard = Completer<Map<String, Object?>>();
+    var reads = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method != 'Clipboard.getData') return null;
+      reads++;
+      return clipboard.future;
+    });
+    addTearDown(() {
+      if (!clipboard.isCompleted) clipboard.complete({'text': '文'});
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    await pumpTerminalPage(tester, backend);
+    final attach = backend.attachOf(backend.created.single['id']! as String);
+
+    Future<void> pasteKey() async {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await settleTerminal(tester);
+    }
+
+    void compose() => tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '  zhong',
+        selection: TextSelection.collapsed(offset: 7),
+        composing: TextRange(start: 2, end: 7),
+      ),
+    );
+    void commit() => tester.testTextInput.updateEditingValue(
+      const TextEditingValue(text: '  中', selection: TextSelection.collapsed(offset: 3)),
+    );
+
+    compose();
+    await settleTerminal(tester);
+    await pasteKey();
+    expect(reads, 0);
+    expect(attach.written, isEmpty);
+    commit();
+    await settleTerminal(tester);
+
+    await pasteKey();
+    expect(reads, 1);
+    compose();
+    await settleTerminal(tester);
+    clipboard.complete({'text': '文'});
+    await settleTerminal(tester);
+    expect(attach.written, '中');
+    commit();
+    await settleTerminal(tester);
+    await pasteKey();
+    expect(attach.written, '中中文');
+  });
+
   testWidgets('hardware copy keeps a wide glyph selected by long press without sending input', (tester) async {
     String? clipboard;
     final backend = FakeTerminalBackend(terminals: [infoJson('a')])..screens['a'] = '中文 hello\r\n\$ ';

@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:dsh_app/state/android_features.dart';
 import 'package:dsh_app/ui/terminal/terminal_keyboard.dart';
 import 'package:flutter/material.dart';
@@ -44,7 +46,7 @@ void main() {
     expect(attach.written, '中\r');
   });
 
-  testWidgets('Android IME dismissal retires the old client; a real terminal tap reopens it', (tester) async {
+  testWidgets('a real touch reopens Android IME; copy, scrolling and mouse selection do not', (tester) async {
     String? copied;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
@@ -64,7 +66,7 @@ void main() {
     tester.testTextInput.log.clear();
     tester.view.viewInsets = FakeViewPadding.zero;
     await settleTerminal(tester);
-    expect(keyboard.hasConnection, isFalse);
+    expect(keyboard.hasConnection, isTrue, reason: 'zero inset alone is not a detach signal');
     expect(tester.widget<TerminalView>(find.byType(TerminalView)).focusNode!.hasFocus, isTrue);
     expect(tester.testTextInput.log.map((call) => call.method), isNot(contains('TextInput.show')));
 
@@ -85,7 +87,12 @@ void main() {
     await second.up();
     await first.up();
     await settleTerminal(tester);
-    expect(keyboard.hasConnection, isFalse);
+    final mouse = await tester.startGesture(view.topLeft + const Offset(12, 8), kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(12, 0));
+    await mouse.up();
+    await settleTerminal(tester);
+    expect(find.text('复制'), findsOneWidget, reason: 'the precise drag still selects characters');
+    expect(tester.testTextInput.log.map((call) => call.method), isNot(contains('TextInput.show')));
 
     tester.testTextInput.log.clear();
     await tester.tap(find.byType(TerminalView));
@@ -126,6 +133,38 @@ void main() {
       expect(attach.written, isEmpty);
     });
   }
+
+  testWidgets('switching the Android IME from docked to floating keeps the composing client', (tester) async {
+    final backend = FakeTerminalBackend();
+    await pumpTerminalPage(tester, backend, overrides: [operatingSystemProvider.overrideWithValue('android')]);
+    final attach = backend.attachOf(backend.created.single['id']! as String);
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+    await settleTerminal(tester);
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '  zhong',
+        selection: TextSelection.collapsed(offset: 7),
+        composing: TextRange(start: 2, end: 7),
+      ),
+    );
+    await settleTerminal(tester);
+    tester.testTextInput.log.clear();
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await settleTerminal(tester);
+    final methods = tester.testTextInput.log.map((call) => call.method);
+    expect(methods, isNot(contains('TextInput.clearClient')));
+    expect(methods, isNot(contains('TextInput.hide')));
+    expect(find.text('zhong'), findsOneWidget);
+    expect(attach.written, isEmpty);
+
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(text: '  中', selection: TextSelection.collapsed(offset: 3)),
+    );
+    await settleTerminal(tester);
+    expect(attach.written, '中');
+  });
 
   testWidgets('the terminal actions can reopen a dismissed keyboard', (tester) async {
     final backend = FakeTerminalBackend();

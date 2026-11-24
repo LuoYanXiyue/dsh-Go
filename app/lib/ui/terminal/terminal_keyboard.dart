@@ -18,7 +18,7 @@ class TerminalKeyboard extends StatefulWidget {
     super.key,
     required this.focusNode,
     required this.enabled,
-    required this.resetOnAndroidDismissal,
+    required this.deferAfterAndroidInsetLoss,
     required this.onText,
     required this.onBackspace,
     required this.onEnter,
@@ -28,7 +28,7 @@ class TerminalKeyboard extends StatefulWidget {
 
   final FocusNode focusNode;
   final bool enabled;
-  final bool resetOnAndroidDismissal;
+  final bool deferAfterAndroidInsetLoss;
 
   /// Committed text (Enter inside it already turned into [onEnter]).
   final ValueChanged<String> onText;
@@ -50,7 +50,7 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   TextInputConnection? _connection;
   TextEditingValue _value = _sentinel;
   double _imeInset = 0;
-  bool _dismissed = false;
+  bool _deferAutomaticShow = false;
 
   /// The IME holds unfinished text: hardware-style key events must wait.
   bool get composing => _value.composing.isValid && !_value.composing.isCollapsed;
@@ -73,14 +73,17 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   @override
   void didChangeMetrics() {
     final inset = View.of(context).viewInsets.bottom;
-    final hidden = _imeInset > 0 && inset == 0;
-    _imeInset = inset;
-    if (widget.resetOnAndroidDismissal && hidden && widget.focusNode.hasFocus) {
-      // System Back can hide the IME without moving Flutter focus. Retire the
-      // old client now so the next tap starts with a clean connection.
-      _dismissed = true;
-      _close();
+    if (widget.deferAfterAndroidInsetLoss && widget.focusNode.hasFocus) {
+      // Back and docked-to-floating both remove a bottom inset. Avoid an
+      // automatic reopen on later focus changes, but don't detach a client
+      // (and lose composition) just because its keyboard stopped resizing us.
+      if (inset > 0) {
+        _deferAutomaticShow = false;
+      } else if (_imeInset > 0) {
+        _deferAutomaticShow = true;
+      }
     }
+    _imeInset = inset;
   }
 
   @override
@@ -105,7 +108,7 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   /// composing connection intact, even for a floating IME with no inset.
   void show() {
     if (!widget.enabled) return;
-    _dismissed = false;
+    _deferAutomaticShow = false;
     final existing = _connection;
     if (widget.focusNode.hasFocus && existing != null && existing.attached && (_imeInset > 0 || composing)) {
       existing.show();
@@ -130,10 +133,10 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   }
 
   void _sync() {
-    if (widget.enabled && widget.focusNode.hasFocus && !_dismissed) {
-      _open();
-    } else {
+    if (!widget.enabled || !widget.focusNode.hasFocus) {
       _close();
+    } else if (!_deferAutomaticShow) {
+      _open();
     }
   }
 
