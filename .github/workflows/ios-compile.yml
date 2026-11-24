@@ -409,13 +409,97 @@ jobs:
       - name: Run the engine inside the app
         if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
         run: |
+          shim="$RUNNER_TEMP/xcrun-shim"
+          mkdir -p "$shim"
+          cat > "$shim/xcrun" <<'SHIM'
+          #!/bin/bash
+          case "${1-}/${2-}" in
+            simctl/install|simctl/launch) kind="simctl-${2}" ;;
+            xcodebuild/*)
+              kind=project
+              for arg in "$@"; do
+                case "$arg" in
+                  -resultBundlePath) kind=build; break ;;
+                  -resolvePackageDependencies|-showBuildSettings|-list) kind=$arg ;;
+                esac
+              done ;;
+            *) exec /usr/bin/xcrun "$@" ;;
+          esac
+          stamp() { /usr/bin/perl -MTime::HiRes=time -e 'printf "%.6f", time'; }
+          printf '%s\t%s\t%s\tstart\n' "$(stamp)" "$$" "$kind" >> "$RUNNER_TEMP/xcode-phases.tsv"
+          if [[ $kind == build ]]; then
+            /usr/bin/xcrun "$@" -showBuildTimingSummary | tee -a "$RUNNER_TEMP/xcodebuild-build.log"
+            status=${PIPESTATUS[0]}
+          else
+            /usr/bin/xcrun "$@"
+            status=$?
+          fi
+          printf '%s\t%s\t%s\tend\t%s\n' "$(stamp)" "$$" "$kind" "$status" >> "$RUNNER_TEMP/xcode-phases.tsv"
+          exit "$status"
+          SHIM
+          chmod +x "$shim/xcrun"
+          export PATH="$shim:$PATH"
+          ls -la "$HOME/Library/Developer/Xcode/DerivedData" > "$RUNNER_TEMP/deriveddata-before.txt" 2>&1 || true
           (
             cd app
             if [[ "${{ inputs.regression_only }}" == "true" ]]; then export FLUTTER_XCODE_ARCHS=arm64; fi
-            bash ../tooling/ios/build.sh --simulator --debug -t integration_test/ios_engine_check.dart
+            bash ../tooling/ios/build.sh --simulator --debug --verbose -t integration_test/ios_engine_check.dart
           )
           node="$(ls -d "$DSH_IOS_ENGINE_WORK"/node-v*-darwin-arm64/bin/node)"
           "$node" tooling/ios/engine-smoke/app-check.mjs --simulator "$DSH_SIMULATOR"             --app app/build/ios/iphonesimulator/Runner.app --mode engine
+
+      - name: Record the Xcode products, logs and package state
+        if: always()
+        run: |
+          out="$RUNNER_TEMP/xcode-diagnosis"
+          mkdir -p "$out"
+          cp "$RUNNER_TEMP"/xcode-phases.tsv "$RUNNER_TEMP"/deriveddata-before.txt "$out/" 2>/dev/null || true
+          gzip -c "$RUNNER_TEMP/xcodebuild-build.log" > "$out/xcodebuild-build.log.gz" 2>/dev/null || true
+          app=app/build/ios/iphonesimulator/Runner.app
+          {
+            for bundle in "$app" "$app"/PlugIns/*.appex; do
+              [[ -f $bundle/Info.plist ]] || continue
+              exe="$bundle/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$bundle/Info.plist")"
+              printf '%s\t%s\t%s\n' "$exe" "$(stat -f %z "$exe")" "$(xcrun lipo -archs "$exe" 2>&1)"
+            done
+            [[ -f $app/Runner.debug.dylib ]] && printf '%s\t%s\t%s\n' "$app/Runner.debug.dylib" "$(stat -f %z "$app/Runner.debug.dylib")" "$(xcrun lipo -archs "$app/Runner.debug.dylib" 2>&1)"
+          } > "$out/lipo.tsv" 2>&1 || true
+          dd="$HOME/Library/Developer/Xcode/DerivedData"
+          ls -la "$dd" > "$out/deriveddata-after.txt" 2>&1 || true
+          for logs in "$dd"/*/Logs/Build; do
+            [[ -d $logs ]] || continue
+            name="$(basename "$(dirname "$(dirname "$logs")")")"
+            mkdir -p "$out/activity/$name"
+            cp -p "$logs"/* "$out/activity/$name/" || true
+          done
+          i=0
+          find "$dd" "$GITHUB_WORKSPACE/app/build" -path '*XCBuildData/*.xcbuilddata/manifest.json' 2>/dev/null | while read -r manifest; do
+            i=$((i + 1))
+            mkdir -p "$out/xcbuilddata/$i"
+            echo "$manifest" > "$out/xcbuilddata/$i/path.txt"
+            cp -p "$manifest" "$out/xcbuilddata/$i/manifest.json"
+          done || true
+          {
+            echo "== SourcePackages"
+            ls -la app/build/ios/SourcePackages
+            find app/build/ios/SourcePackages app/ios -maxdepth 3 \( -name workspace-state.json -o -name Package.resolved \) -print
+            find app/build/ios/SourcePackages -maxdepth 4 -iname '*webrtc*' -print
+            echo "== SwiftPM shared stores, files named webrtc"
+            find "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm" -type f -iname '*webrtc*' -exec ls -l {} + 2>/dev/null
+          } > "$out/webrtc.txt" 2>&1 || true
+          cp app/build/ios/SourcePackages/workspace-state.json "$out/" 2>/dev/null || true
+          find app/build/ios/SourcePackages app/ios -maxdepth 3 -name Package.resolved -print0 2>/dev/null | while IFS= read -r -d '' resolved; do
+            cp "$resolved" "$out/$(echo "$resolved" | tr / _)"
+          done || true
+          du -sh "$out" || true
+
+      - name: Keep the Xcode diagnosis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: xcode-diagnosis-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/xcode-diagnosis
+          if-no-files-found: warn
 
       # build.sh just built it, and the app it is linked into ran.
       - name: Save the phone runner library
