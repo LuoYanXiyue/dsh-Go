@@ -127,6 +127,9 @@
   // target it.
   var pending = false;
   var swallowClick = false;
+  // The menu button's own click, dispatched below: the tap that ends a long
+  // press must be swallowed, this one must not.
+  var syntheticClick = false;
   function outsideDrawer(e) {
     if (!drawer() || !sidebarOpen()) return false;
     var f = frame();
@@ -175,6 +178,7 @@
       if (toggling) return;
       if (swallowClick) {
         swallowClick = false;
+        if (syntheticClick) return;
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -278,9 +282,11 @@
     swallowClick = true;
     setTimeout(function () { swallowClick = false; }, 600);
     setTimeout(function () {
+      syntheticClick = true;
       try {
         trigger.click();
       } finally {
+        syntheticClick = false;
         setTimeout(function () { if (pressed === row) release(); }, 320);
       }
     }, 16);
