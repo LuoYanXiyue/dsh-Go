@@ -3648,6 +3648,7 @@
   "webDiagTokenOff": "no token yet",
   "webDiagExit": "exit {code}",
   "webEngineLogs": "Open the log",
+  "lobbyBackHome": "Back home",
   "localeTitle": "Language",
   "localeSystem": "System",
   "localeZh": "简体中文",

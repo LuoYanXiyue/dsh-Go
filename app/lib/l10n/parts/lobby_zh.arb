@@ -13,5 +13,6 @@
   "webDiagExit": "退出码 {code}",
   "webEngineLogs": "查看日志",
   "@webDiagPort": {"placeholders": {"port": {"type": "int"}}},
-  "@webDiagExit": {"placeholders": {"code": {"type": "int"}}}
+  "@webDiagExit": {"placeholders": {"code": {"type": "int"}}},
+  "lobbyBackHome": "返回主页"
 }

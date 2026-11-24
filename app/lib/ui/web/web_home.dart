@@ -161,8 +161,19 @@ class _WebHomeState extends ConsumerState<WebHome> {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(problems.first)));
   }
 
-  Widget _handle(double size) =>
-      WebHandleButton(size: size, onTerminal: _openTerminal, onFiles: _openFiles);
+  Widget _handle(double size) => WebHandleButton(
+    size: size,
+    // 简报 §2.5: 开始对话 opens the page as a page, so the handle can take it
+    // back to the app's own home; when the page *is* the home (启动后直接进对话)
+    // there is nothing under it and the row is left out.
+    onHome: Navigator.of(context).canPop() ? _backHome : null,
+    onTerminal: _openTerminal,
+    onFiles: _openFiles,
+  );
+
+  Future<void> _backHome() async {
+    if (mounted) Navigator.of(context).maybePop();
+  }
 
   /// 终端: the conversation's shell, full screen, as the native interface has
   /// it. Nothing to open while the page shows no conversation.

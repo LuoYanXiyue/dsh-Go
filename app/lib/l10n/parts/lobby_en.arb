@@ -11,5 +11,6 @@
   "webDiagTokenOn": "token received",
   "webDiagTokenOff": "no token yet",
   "webDiagExit": "exit {code}",
-  "webEngineLogs": "Open the log"
+  "webEngineLogs": "Open the log",
+  "lobbyBackHome": "Back home"
 }

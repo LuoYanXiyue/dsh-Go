@@ -80,9 +80,20 @@ class WebMarkButton extends StatelessWidget {
 
 /// The handle: 网页模式's one key, opening the app's own pages over the page.
 class WebHandleButton extends StatelessWidget {
-  const WebHandleButton({super.key, required this.size, this.onNative, this.onTerminal, this.onFiles});
+  const WebHandleButton({
+    super.key,
+    required this.size,
+    this.onHome,
+    this.onNative,
+    this.onTerminal,
+    this.onFiles,
+  });
 
   final double size;
+
+  /// 返回主页: the page was opened from the app's own home (软件层主页), so it
+  /// has somewhere to go back to; null when the page *is* the home.
+  final Future<void> Function()? onHome;
 
   /// 切回原生界面 (the caller hands the conversation over first); null where
   /// there is no native interface to go back to.
@@ -106,7 +117,7 @@ class WebHandleButton extends StatelessWidget {
       tooltip: tooltip,
       label: tooltip,
       onTap: () => unawaited(
-        showWebHandleSheet(context, onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
+        showWebHandleSheet(context, onHome: onHome, onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
       ),
     );
   }
@@ -115,17 +126,19 @@ class WebHandleButton extends StatelessWidget {
 /// 切回原生界面 · 终端 · App 设置 · 切换主机.
 Future<void> showWebHandleSheet(
   BuildContext context, {
+  Future<void> Function()? onHome,
   Future<void> Function()? onNative,
   Future<void> Function()? onTerminal,
   Future<void> Function()? onFiles,
 }) => showAppSheet<void>(
   context,
-  builder: (_) => _HandleSheet(onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
+  builder: (_) => _HandleSheet(onHome: onHome, onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
 );
 
 class _HandleSheet extends ConsumerWidget {
-  const _HandleSheet({required this.onNative, required this.onTerminal, required this.onFiles});
+  const _HandleSheet({required this.onHome, required this.onNative, required this.onTerminal, required this.onFiles});
 
+  final Future<void> Function()? onHome;
   final Future<void> Function()? onNative;
   final Future<void> Function()? onTerminal;
   final Future<void> Function()? onFiles;
@@ -146,6 +159,18 @@ class _HandleSheet extends ConsumerWidget {
           SheetGroup(
             margin: const EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.inset, 12),
             children: [
+              if (onHome case final home?)
+                SettingsTile(
+                  key: const ValueKey('web-handle-home'),
+                  icon: AppIcons.home,
+                  tinted: false,
+                  title: context.l10n.lobbyBackHome,
+                  chevron: false,
+                  onTap: () {
+                    navigator.pop();
+                    unawaited(home());
+                  },
+                ),
               if (onNative case final native?)
                 SettingsTile(
                   key: const ValueKey('web-handle-native'),
