@@ -13776,6 +13776,24 @@ abstract class L10n {
   /// **'把「{name}」从这台手机上移除？她的文件会删掉，记忆和提醒还在。'**
   String companionRosterRemoveConfirm(String name);
 
+  /// No description provided for @companionWorkspaceLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'在手机的 Linux 里办事…'**
+  String get companionWorkspaceLocal;
+
+  /// No description provided for @companionWorkspaceRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'在电脑上办事…'**
+  String get companionWorkspaceRemote;
+
+  /// No description provided for @companionWorkspaceWaiting.
+  ///
+  /// In zh, this message translates to:
+  /// **'在等你确认'**
+  String get companionWorkspaceWaiting;
+
   /// No description provided for @automaticDiagnosticsRecover.
   ///
   /// In zh, this message translates to:

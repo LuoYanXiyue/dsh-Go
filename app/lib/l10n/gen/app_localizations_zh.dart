@@ -7418,6 +7418,15 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get companionWorkspaceLocal => '在手机的 Linux 里办事…';
+
+  @override
+  String get companionWorkspaceRemote => '在电脑上办事…';
+
+  @override
+  String get companionWorkspaceWaiting => '在等你确认';
+
+  @override
   String get automaticDiagnosticsRecover => '恢复本地记录';
 
   @override

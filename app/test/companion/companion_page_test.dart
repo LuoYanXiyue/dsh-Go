@@ -21,6 +21,8 @@ import 'package:dsh_app/pets/pet_mood.dart';
 import 'package:dsh_app/pets/pet_signals.dart';
 import 'package:dsh_app/notify/chat_alerts.dart' show companionHostKey;
 import 'package:dsh_app/speech/speech_settings.dart';
+import 'package:dsh_app/state/attachments.dart';
+import 'package:dsh_app/state/chat_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
 import 'package:dsh_app/state/sessions_state.dart';
 import 'package:dsh_app/state/settings_state.dart';
@@ -31,6 +33,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:dsh_app/l10n/gen/app_localizations.dart';
 import 'package:dsh_app/state/connection_state.dart';
+import 'package:dsh_app/ui/chat/widgets/approval_card.dart';
 import 'package:dsh_app/ui/companion/companion_chrome.dart';
 import 'package:dsh_app/ui/companion/companion_log.dart';
 import 'package:dsh_app/ui/companion/companion_memory_page.dart';
@@ -45,6 +48,11 @@ import 'package:dsh_app/ui/theme/app_theme.dart';
 import 'package:dsh_app/ui/workspace/directory_picker.dart';
 import 'package:dsh_client/dsh_client.dart'
     show
+        ApprovalRequest,
+        AssistantChatItem,
+        ToolChatItem,
+        ToolStatus,
+        UserChatItem,
         CompanionAffinityStore,
         CompanionMemory,
         CompanionMemoryScopeStore,
@@ -69,6 +77,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../chat/support/harness.dart' show FakeChatController;
 import 'phone_keeper_fake.dart';
 import 'companion_test_settle.dart';
 import '../support/companion_notes_peer.dart';
@@ -145,6 +154,25 @@ class _BoundSessions extends CompanionSessions {
   @override
   Future<CompanionBinding> ensure({String? memoryArchiveId, int? memoryControlRevision}) async =>
       CompanionBinding(id, memoryArchiveId: memoryArchiveId, memoryControlRevision: memoryControlRevision);
+}
+
+/// Her Host session as the room's chat state: what is sent goes out under a
+/// request id, as the real one does, and the test plays the turn.
+class _HostSession extends FakeChatController {
+  _HostSession(String id) : super(id, const ChatState(loading: false));
+
+  @override
+  Future<bool> send(
+    String text, {
+    List<DraftAttachment> attachments = const [],
+    SendMode mode = SendMode.now,
+    bool verbatim = false,
+    Future<bool> Function(String requestId)? beforeDeliver,
+    bool Function()? deliveryAllowed,
+  }) async {
+    if (beforeDeliver != null && !await beforeDeliver('req-1')) return false;
+    return super.send(text, attachments: attachments, mode: mode);
+  }
 }
 
 /// Computer tools are offered only in a connected full room now (light is
@@ -2019,6 +2047,139 @@ void main() {
           // Product divergence for the two route scenarios, see [_routeMapPillGap].
         }, skip: _routeMapPillGap && (scenario == 'scope-route' || scenario == 'queued-handoff-route'));
       }
+
+      testWidgets('her own Host session does the work: its step and approval in the room, its words back to her', (
+        tester,
+      ) async {
+        _resumeApp(tester);
+        const now = 1795219200000;
+        const channel = MethodChannel('dsh/companion_reminders');
+        const asked = '把下载里的文件列给我';
+        final memory = _ReceiptMemory(
+          CompanionMemoryStore(sqlite3.open('${root.path}/memory.sqlite'), nowMilliseconds: () => now),
+          CompanionLocal.at(root),
+          nowMilliseconds: () => now,
+        );
+        final peer = (await tester.runAsync(NotesPeer.open))!;
+        final sessions = <String, _HostSession>{};
+        final model = _AgentModel.script(
+          (said) => said == asked
+              ? [
+                  ('workspace', <String, Object?>{'task': '列出 /sdcard/Download 里的文件'}),
+                ]
+              : const [],
+          replies: const {asked: '下载里就两个文件。'},
+        );
+        var cleaned = false;
+        // Runs at the end of the body too: the pending-timer check comes
+        // before tear-downs.
+        Future<void> cleanUp() async {
+          if (cleaned) return;
+          cleaned = true;
+          await tester.pumpWidget(const SizedBox());
+          memory.dispose();
+          await tester.pump();
+          await tester.runAsync(peer.close);
+          // The inherited real HttpClient owns a 15-second idle timer.
+          await tester.pump(const Duration(seconds: 16));
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+        }
+
+        addTearDown(cleanUp);
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          (call) async => switch (call.method) {
+            'clock' => {'utcMs': now, 'zoneId': 'Asia/Shanghai', 'offsetSeconds': 28800},
+            'capabilities' => {'executorId': 'phone-original', 'exact': true, 'notifications': true},
+            _ => null,
+          },
+        );
+        peer.hostModel.model = () => model.client;
+        await openLight(
+          tester,
+          apiKey: 'sk-test',
+          client: model.client,
+          connection: HostConnection(client: peer.client, isLocal: false),
+          extra: [
+            ..._hostRoom,
+            companionMemoryOwnerProvider(root.absolute.path).overrideWith((ref) => memory),
+            chatProvider.overrideWith2((id) => sessions[id] = _HostSession(id)),
+          ],
+        );
+        expect(await memoryOf(tester), same(memory));
+        await settleMixed(tester, memory.migrateLocal());
+        await tester.enterText(find.byType(TextField), asked);
+        await tester.pump();
+        await tester.tap(find.byIcon(AppIcons.send).last);
+        for (var i = 0; i < 200 && sessions[_BoundSessions.id]?.sent.isEmpty != false; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        final session = sessions[_BoundSessions.id]!;
+        expect(session.sent.single, '（伙伴替对方交代的事。对方原话：「$asked」）\n列出 /sdcard/Download 里的文件');
+
+        // The session's own approval, answered right here in the room.
+        final message = UserChatItem(
+          seq: 1,
+          time: DateTime.utc(2026, 11, 24),
+          text: session.sent.single,
+          images: const [],
+          files: const [],
+          requestId: 'req-1',
+        );
+        ToolChatItem bash(ToolStatus status, [ApprovalRequest? pending]) => ToolChatItem(
+          callId: 'c1',
+          name: 'bash',
+          arguments: '{"command":"ls /sdcard/Download"}',
+          status: status,
+          seq: 2,
+          pendingApproval: pending,
+        );
+        const approval = ApprovalRequest(eventId: 'e1', sessionId: _BoundSessions.id, toolName: 'bash', callId: 'c1');
+        session.emit(
+          ChatState(
+            loading: false,
+            running: true,
+            approvals: const [approval],
+            items: [message, bash(ToolStatus.awaitingApproval, approval)],
+          ),
+        );
+        await _notesVisible(tester, find.byType(ApprovalCard));
+        expect(find.text('在等你确认'), findsOneWidget);
+        // The card grows in before it can be tapped.
+        await tester.pump(const Duration(seconds: 1));
+        await tester.ensureVisible(find.text('允许本次'));
+        await tester.tap(find.text('允许本次'));
+        await tester.pump();
+        expect(session.responses.single.$1.eventId, 'e1');
+        session.emit(ChatState(loading: false, running: true, items: [message, bash(ToolStatus.running)]));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump();
+        expect(find.byType(ApprovalCard), findsNothing);
+        expect(find.textContaining('ls /sdcard/Download'), findsOneWidget);
+
+        session.emit(
+          ChatState(
+            loading: false,
+            items: [
+              message,
+              bash(ToolStatus.succeeded),
+              const AssistantChatItem(id: 'a3', text: '有 a.pdf 和 b.zip。', reasoning: '', seq: 3),
+            ],
+          ),
+        );
+        await _notesVisible(tester, find.textContaining('下载里就两个文件'));
+        await _drained(tester, memory);
+        expect(model.offered.first, contains('workspace'));
+        final result = model.results.single;
+        expect(result, containsPair('result', '有 a.pdf 和 b.zip。'));
+        expect(result, containsPair('toolCalls', 1));
+        // This phone's own engine without 访问手机文件: she is told where to turn it on.
+        expect(result['phoneFiles'], contains('设置 → 权限'));
+        expect(find.textContaining('ls /sdcard/Download'), findsNothing);
+        await cleanUp();
+      });
 
       for (final scenario in [
         'accepted',

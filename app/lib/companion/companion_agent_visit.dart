@@ -47,6 +47,15 @@ class CompanionAgentAttachment {
   }
 
   String? get replyId => _visit.run?.replyId;
+
+  /// Her work in her own engine session right now: where, and its latest step.
+  ({String sessionId, String step})? get workspace {
+    final tool = _visit.activeWorkspace;
+    final id = tool?.sessionId;
+    final step = tool?.step;
+    return isAttached && id != null && step != null ? (sessionId: id, step: step) : null;
+  }
+
   Object? get error {
     final run = _visit.run;
     // Only a turn that already ran a tool is closed: retrying it could repeat
@@ -323,6 +332,7 @@ class _CompanionAgentVisit {
   MemoryRow? retrySource;
   CompanionAgentMemoryTools? retryTools;
   CompanionAgentPhoneTools? activePhoneTools;
+  CompanionAgentWorkspaceTool? activeWorkspace;
   CompanionResidentSignals? residentSignals;
   _VisitNotices? notices;
   _CompanionAgentRun? run;
@@ -688,6 +698,7 @@ class _CompanionAgentVisit {
     CompanionAgentMemoryTools? memoryTools;
     CompanionAgentTaskTools? taskTools;
     CompanionAgentPhoneTools? phoneTools;
+    CompanionAgentWorkspaceTool? workspace;
     _CompanionAgentRun? submittedRun;
     Completer<void>? settled;
     try {
@@ -815,23 +826,49 @@ class _CompanionAgentVisit {
             current() &&
             ref.read(activeHostProvider) == hostRef &&
             identical(ref.read(activeConnectionProvider).value?.client, client);
+        Future<String> ensureSession() async {
+          if (client == null || !hostCurrent()) throw const DshClosedException('Companion Host changed');
+          final binding = await ref
+              .read(companionSessionsProvider.notifier)
+              .ensure(
+                memoryArchiveId: owner.store.archive['id']! as String,
+                memoryControlRevision: owner.store.archive['control_revision']! as int,
+              );
+          if (!hostCurrent()) throw const DshClosedException('Companion Host changed');
+          return binding.sessionId;
+        }
+
         host = CompanionAgentTaskHost(
           key: companionHostKey(hostRef),
           client: client,
           isCurrent: hostCurrent,
           sessionId: client == null ? null : ref.read(companionSessionsProvider.notifier).of(hostRef)?.sessionId,
-          ensureSession: () async {
-            if (client == null || !hostCurrent()) throw const DshClosedException('Companion Host changed');
-            final binding = await ref
-                .read(companionSessionsProvider.notifier)
-                .ensure(
-                  memoryArchiveId: owner.store.archive['id']! as String,
-                  memoryControlRevision: owner.store.archive['control_revision']! as int,
-                );
-            if (!hostCurrent()) throw const DshClosedException('Companion Host changed');
-            return binding.sessionId;
-          },
+          ensureSession: ensureSession,
         );
+        // A live client means full mode on a connected host: her own session
+        // there does the work (light mode has no captured host at all).
+        if (client != null) {
+          final local = hostRef.isLocal;
+          workspace = activeWorkspace = CompanionAgentWorkspaceTool(
+            ref: ref,
+            ensureSession: ensureSession,
+            isCurrent: hostCurrent,
+            local: local,
+            phoneFiles: local && ref.read(androidSystemFeaturesProvider)
+                ? ref.read(settingsProvider).phoneStorage
+                : null,
+            said: raw,
+            onProgress: (step) {
+              changed();
+              if (residentUi case final CompanionAgentAmbientUi target
+                  when step != null && current() && target.presentationAvailable) {
+                unawaited(
+                  target.presentLine(id: 'workspace:${source['id']}', text: step, emotion: 'neutral', speak: false),
+                );
+              }
+            },
+          );
+        }
       }
       taskTools = CompanionAgentTaskTools(
         memoryTools: memoryTools,
@@ -883,6 +920,7 @@ class _CompanionAgentVisit {
             ? [
                 ...memoryTools.bindings,
                 ...taskTools.bindings,
+                ...?workspace?.bindings,
                 ...phoneTools.bindings,
                 if (ref.read(androidSystemFeaturesProvider)) ...photoTools.bindings,
               ]
@@ -891,7 +929,10 @@ class _CompanionAgentVisit {
             : phoneTools.bindings,
         isCurrent: current,
         onSelected: memoryTools.grantSelection,
-        onStop: phoneTools.stop,
+        onStop: () {
+          phoneTools?.stop();
+          workspace?.stop();
+        },
       );
       submittedRun = run = agent._run;
       if (submittedRun != null) notices?.bindReply(submittedRun, noticeReply);
@@ -930,6 +971,7 @@ class _CompanionAgentVisit {
         await phoneTools?.close(stopped: !current() || submittedRun?.cancelled == true);
       } finally {
         if (identical(activePhoneTools, phoneTools)) activePhoneTools = null;
+        if (identical(activeWorkspace, workspace)) activeWorkspace = null;
         try {
           taskTools?.close();
         } finally {
@@ -954,6 +996,7 @@ class _CompanionAgentVisit {
 
   void stop({bool discard = false}) {
     activePhoneTools?.stop();
+    activeWorkspace?.stop();
     agent.cancelScreenObservation();
     final pendingRetry = retryTools;
     retryTools = null;

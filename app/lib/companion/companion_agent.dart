@@ -27,6 +27,7 @@ import 'companion_memory_id.dart';
 import 'companion_agent_task_tools.dart';
 import 'companion_agent_task_ui.dart';
 import 'companion_agent_tools.dart';
+import 'companion_agent_workspace_tool.dart';
 import 'companion_context.dart';
 import 'companion_host_memory_transport.dart';
 import 'companion_light.dart';

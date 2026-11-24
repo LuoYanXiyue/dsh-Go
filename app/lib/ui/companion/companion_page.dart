@@ -79,6 +79,7 @@ import '../shell/page_frame.dart';
 import '../workshop/workshop_screen.dart';
 import '../workspace/directory_picker.dart';
 import 'companion_chrome.dart';
+import 'companion_ask.dart';
 import 'companion_assistant_settings.dart';
 import 'companion_draft_inputs.dart';
 import 'companion_receipt_inputs.dart';
@@ -3546,6 +3547,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage>
         ? _attachment.pendingRawErase
         : null;
     if (rawErase != null && _rawEraseOffered != rawErase.id) _offerRawErase(rawErase.id);
+    // Her own session working for her: its step, and what it waits on answered here.
+    final workspace = showStage && _stageReady ? _attachment.workspace : null;
     final rawEraseLeft = switch (rawErase?.expiresAtUtcMs) {
       final ends? => Duration(milliseconds: max(0, ends - DateTime.now().millisecondsSinceEpoch)),
       _ => null,
@@ -3702,6 +3705,16 @@ class _CompanionPageState extends ConsumerState<CompanionPage>
                       _openAgent(pill.sessionId);
                     },
                   ),
+                if (workspace != null)
+                  CompanionPill(
+                    icon: AppIcons.terminal,
+                    label: workspace.step,
+                    tone: const Color(0xFF9FD8F2),
+                    onTap: () {
+                      _acted();
+                      _openFullChat();
+                    },
+                  ),
                 CompanionMyLine(text: _myLine),
                 CompanionSpeech(
                   text: _bubble,
@@ -3799,6 +3812,8 @@ class _CompanionPageState extends ConsumerState<CompanionPage>
                   onAccept: () => _answerInvite(yes: true),
                   onDecline: () => _answerInvite(yes: false),
                 ),
+                if (workspace != null)
+                  CompanionAsk(key: ValueKey('ask-${workspace.sessionId}'), sessionId: workspace.sessionId),
                 const SizedBox(height: 10),
                 if (_assistantPage != null)
                   InputChip(

@@ -1272,5 +1272,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "companionWorkspaceLocal": "在手机的 Linux 里办事…",
+  "companionWorkspaceRemote": "在电脑上办事…",
+  "companionWorkspaceWaiting": "在等你确认"
 }

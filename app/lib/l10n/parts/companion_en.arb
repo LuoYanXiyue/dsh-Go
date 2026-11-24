@@ -1200,5 +1200,17 @@
         "type": "String"
       }
     }
+  },
+  "companionWorkspaceLocal": "Working in the phone's Linux…",
+  "@companionWorkspaceLocal": {
+    "description": "Room pill while she works in her own session on this phone's Linux runtime."
+  },
+  "companionWorkspaceRemote": "Working on the computer…",
+  "@companionWorkspaceRemote": {
+    "description": "Room pill while she works in her own session on a connected computer."
+  },
+  "companionWorkspaceWaiting": "Waiting for your go-ahead",
+  "@companionWorkspaceWaiting": {
+    "description": "Room pill while her session waits on an approval or a question shown below it."
   }
 }

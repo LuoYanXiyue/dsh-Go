@@ -7879,6 +7879,15 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get companionWorkspaceLocal => 'Working in the phone\'s Linux…';
+
+  @override
+  String get companionWorkspaceRemote => 'Working on the computer…';
+
+  @override
+  String get companionWorkspaceWaiting => 'Waiting for your go-ahead';
+
+  @override
   String get automaticDiagnosticsRecover => 'Recover local records';
 
   @override
