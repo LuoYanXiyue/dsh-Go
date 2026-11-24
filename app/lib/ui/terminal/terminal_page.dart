@@ -463,7 +463,7 @@ class _TabActions extends StatelessWidget {
                 margin: _margin,
                 children: [
                   ListPageRow(
-                    icon: Icons.keyboard_outlined,
+                    icon: AppIcons.terminal,
                     title: l10n.botsTerminalShowKeyboard,
                     chevron: false,
                     onTap: onKeyboard,
