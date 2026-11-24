@@ -6,5 +6,12 @@
   "lobbyTerminalHint": "开始一个对话后可用",
   "lobbyDiagnostics": "诊断",
   "lobbyDirect": "启动后直接进对话",
-  "lobbyDirectHint": "打开 App 就进入网页对话；关掉则先到这个主页"
+  "lobbyDirectHint": "打开 App 就进入网页对话；关掉则先到这个主页",
+  "webDiagPort": "端口 {port}",
+  "webDiagTokenOn": "token 已拿到",
+  "webDiagTokenOff": "token 未拿到",
+  "webDiagExit": "退出码 {code}",
+  "webEngineLogs": "查看日志",
+  "@webDiagPort": {"placeholders": {"port": {"type": "int"}}},
+  "@webDiagExit": {"placeholders": {"code": {"type": "int"}}}
 }

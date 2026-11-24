@@ -129,9 +129,12 @@ class _NotRunning extends ConsumerWidget {
                       ? missingCopy.title
                       : context.l10n.webEngineNotRunning,
                   message: failed
-                      ? (humanizeRuntimeError(state.status.error) ?? context.l10n.webEngineProblem)
+                      ? [
+                          humanizeRuntimeError(state.status.error) ?? context.l10n.webEngineProblem,
+                          _webDiag(context, state.status),
+                        ].join('\n\n')
                       : busy
-                      ? context.l10n.webStartingSoon
+                      ? [context.l10n.webStartingSoon, _webDiag(context, state.status)].join('\n\n')
                       : missing
                       ? null
                       : context.l10n.webStartToOpen,
@@ -141,23 +144,46 @@ class _NotRunning extends ConsumerWidget {
                           onPressed: () => unawaited(openLocalInstall(context)),
                           child: Text(missingCopy.action),
                         )
-                      : storage
-                      ? FilledButton(
-                          style: FilledButton.styleFrom(minimumSize: const Size(160, 44)),
-                          onPressed: () => unawaited(
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(builder: (_) => const DataPage()),
+                      : !(storage || canStart)
+                      ? null
+                      : Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            FilledButton(
+                              style: FilledButton.styleFrom(minimumSize: const Size(160, 44)),
+                              onPressed: storage
+                                  ? () => unawaited(
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(builder: (_) => const DataPage()),
+                                      ),
+                                    )
+                                  : () => unawaited(
+                                      EngineControl.ensureStarted(ProviderScope.containerOf(context)),
+                                    ),
+                              child: Text(
+                                storage
+                                    ? context.l10n.dataCache
+                                    : failed
+                                    ? context.l10n.webRestart
+                                    : context.l10n.webStartEngine,
+                              ),
                             ),
-                          ),
-                          child: Text(context.l10n.dataCache),
-                        )
-                      : canStart
-                      ? FilledButton(
-                          style: FilledButton.styleFrom(minimumSize: const Size(160, 44)),
-                          onPressed: () => unawaited(EngineControl.ensureStarted(ProviderScope.containerOf(context))),
-                          child: Text(failed ? context.l10n.webRestart : context.l10n.webStartEngine),
-                        )
-                      : null,
+                            // 白屏的出口: the log says which step stopped, whether a
+                            // token came back, and the engine's exit code.
+                            if (failed)
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(minimumSize: const Size(120, 44)),
+                                onPressed: () => unawaited(
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(builder: (_) => const EngineScreen()),
+                                  ),
+                                ),
+                                child: Text(context.l10n.webEngineLogs),
+                              ),
+                          ],
+                        ),
                 ),
               ),
             ),
@@ -166,4 +192,18 @@ class _NotRunning extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// 白屏三态 (简报 §12): what the page needs in order to have opened, in one
+/// line: the port the engine should be listening on, whether a launch token
+/// came back, and — when the engine exited — its code.
+String _webDiag(BuildContext context, RuntimeStatus status) {
+  final l10n = context.l10n;
+  final port = Uri.tryParse(status.baseUrl ?? '')?.port ?? 3080;
+  final exit = status.failure?.exitCode ?? 0;
+  return [
+    l10n.webDiagPort(port),
+    status.token == null ? l10n.webDiagTokenOff : l10n.webDiagTokenOn,
+    if (exit != 0) l10n.webDiagExit(exit),
+  ].join(' · ');
 }
