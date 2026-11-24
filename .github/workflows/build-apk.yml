@@ -40,6 +40,14 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses > /dev/null || true
 
+      # libtawcroot.so is compiled by runtime/tawcroot/build.py, which refuses an
+      # NDK other than the one its source.json pins; the runner's image does not
+      # ship it, so install it beside the SDK the other tools come from.
+      - name: Install the pinned NDK
+        run: |
+          yes | sdkmanager --install "ndk;28.2.13676358" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
       - name: Build runtime
         run: bash runtime/build-runtime.sh arm64-v8a
 

@@ -40,6 +40,8 @@ class UiModeState {
 }
 
 class UiModeController extends Notifier<UiModeState> {
+  static const key = 'ui.mode';
+
   @override
   UiModeState build() {
     unawaited(_load());
