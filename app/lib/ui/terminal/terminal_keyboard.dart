@@ -18,6 +18,7 @@ class TerminalKeyboard extends StatefulWidget {
     super.key,
     required this.focusNode,
     required this.enabled,
+    required this.resetOnAndroidDismissal,
     required this.onText,
     required this.onBackspace,
     required this.onEnter,
@@ -27,6 +28,7 @@ class TerminalKeyboard extends StatefulWidget {
 
   final FocusNode focusNode;
   final bool enabled;
+  final bool resetOnAndroidDismissal;
 
   /// Committed text (Enter inside it already turned into [onEnter]).
   final ValueChanged<String> onText;
@@ -42,11 +44,13 @@ class TerminalKeyboard extends StatefulWidget {
   State<TerminalKeyboard> createState() => TerminalKeyboardState();
 }
 
-class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient {
+class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient, WidgetsBindingObserver {
   static const _sentinel = TextEditingValue(text: '  ', selection: TextSelection.collapsed(offset: 2));
 
   TextInputConnection? _connection;
   TextEditingValue _value = _sentinel;
+  double _imeInset = 0;
+  bool _dismissed = false;
 
   /// The IME holds unfinished text: hardware-style key events must wait.
   bool get composing => _value.composing.isValid && !_value.composing.isCollapsed;
@@ -57,6 +61,26 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   void initState() {
     super.initState();
     widget.focusNode.addListener(_sync);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _imeInset = View.of(context).viewInsets.bottom;
+  }
+
+  @override
+  void didChangeMetrics() {
+    final inset = View.of(context).viewInsets.bottom;
+    final hidden = _imeInset > 0 && inset == 0;
+    _imeInset = inset;
+    if (widget.resetOnAndroidDismissal && hidden && widget.focusNode.hasFocus) {
+      // System Back can hide the IME without moving Flutter focus. Retire the
+      // old client now so the next tap starts with a clean connection.
+      _dismissed = true;
+      _close();
+    }
   }
 
   @override
@@ -71,19 +95,22 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.focusNode.removeListener(_sync);
     _close();
     super.dispose();
   }
 
-  /// Brings the keyboard back (a tap on the screen after it was dismissed).
-  /// On a fresh connection: some IMEs ignore show() once Back has hidden them
-  /// (iFlytek on HyperOS, #1277), and a new attach is what brings them back,
-  /// as leaving the page does. Attaching in the same frame keeps an open
-  /// keyboard up.
+  /// Brings the keyboard back on explicit user input. Keep a visible or
+  /// composing connection intact, even for a floating IME with no inset.
   void show() {
     if (!widget.enabled) return;
-    flushComposing();
+    _dismissed = false;
+    final existing = _connection;
+    if (widget.focusNode.hasFocus && existing != null && existing.attached && (_imeInset > 0 || composing)) {
+      existing.show();
+      return;
+    }
     _close();
     if (!widget.focusNode.hasFocus) {
       widget.focusNode.requestFocus();
@@ -103,7 +130,7 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
   }
 
   void _sync() {
-    if (widget.enabled && widget.focusNode.hasFocus) {
+    if (widget.enabled && widget.focusNode.hasFocus && !_dismissed) {
       _open();
     } else {
       _close();
@@ -131,9 +158,11 @@ class TerminalKeyboardState extends State<TerminalKeyboard> with TextInputClient
     );
     _connection = connection;
     _value = _sentinel;
+    // On Android, setEditingState triggers restartInput for a new client.
+    // Ask the IME to show after that request, not on the previous editor.
     connection
-      ..show()
-      ..setEditingState(_sentinel);
+      ..setEditingState(_sentinel)
+      ..show();
   }
 
   void _close() {
