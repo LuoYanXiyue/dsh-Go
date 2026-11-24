@@ -125,8 +125,25 @@ class _DataPageState extends ConsumerState<DataPage> {
       _tell(l10n.dataFailed('$error'));
       return;
     }
-    final path = picked?.path;
-    if (path == null || !mounted) return;
+    if (picked == null || !mounted) return;
+    // A pick on Android is often a content URI: bring it somewhere the
+    // unzipper can seek before anything touches DSH home.
+    final File zip;
+    try {
+      final folder = Directory('${(await getTemporaryDirectory()).path}/data-restore');
+      await folder.create(recursive: true);
+      zip = File(p.join(folder.path, 'restore-${DateTime.now().millisecondsSinceEpoch}.zip'));
+      final sink = zip.openWrite();
+      try {
+        await sink.addStream(picked.readAsByteStream());
+      } finally {
+        await sink.close();
+      }
+    } catch (error) {
+      _tell(l10n.dataFailed('$error'));
+      return;
+    }
+    if (!mounted) return;
     final yes = await _confirm(
       title: l10n.dataRestore,
       body: l10n.dataRestoreWarning,
@@ -141,7 +158,7 @@ class _DataPageState extends ConsumerState<DataPage> {
       if (wasRunning) await _stopEngine(runtime);
       final backup = await DshHomeBackup.local();
       if (backup == null) throw const BackupException('missing');
-      final kept = await backup.restoreFrom(File(path), onProgress: _onProgress);
+      final kept = await backup.restoreFrom(zip, onProgress: _onProgress);
       if (wasRunning) unawaited(runtime.start());
       if (!mounted) return;
       _tell(kept == null ? l10n.dataRestoreDone : l10n.dataRestored(kept.path));
@@ -154,6 +171,11 @@ class _DataPageState extends ConsumerState<DataPage> {
       _tell(l10n.dataFailed('$error'));
     } finally {
       if (mounted) setState(() => _progress = null);
+      try {
+        if (await zip.exists()) await zip.delete();
+      } on FileSystemException {
+        // The cache is swept later.
+      }
     }
   }
 
