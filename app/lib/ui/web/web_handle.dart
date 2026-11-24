@@ -80,7 +80,7 @@ class WebMarkButton extends StatelessWidget {
 
 /// The handle: 网页模式's one key, opening the app's own pages over the page.
 class WebHandleButton extends StatelessWidget {
-  const WebHandleButton({super.key, required this.size, this.onNative, this.onTerminal});
+  const WebHandleButton({super.key, required this.size, this.onNative, this.onTerminal, this.onFiles});
 
   final double size;
 
@@ -92,6 +92,10 @@ class WebHandleButton extends StatelessWidget {
   /// null while no conversation is open.
   final Future<void> Function()? onTerminal;
 
+  /// 文件: that conversation's workspace, as the native list page; null while no
+  /// conversation is open.
+  final Future<void> Function()? onFiles;
+
   static String get tooltip => appL10n.webNativeFeatures;
 
   @override
@@ -101,7 +105,9 @@ class WebHandleButton extends StatelessWidget {
       size: size,
       tooltip: tooltip,
       label: tooltip,
-      onTap: () => unawaited(showWebHandleSheet(context, onNative: onNative, onTerminal: onTerminal)),
+      onTap: () => unawaited(
+        showWebHandleSheet(context, onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
+      ),
     );
   }
 }
@@ -111,16 +117,18 @@ Future<void> showWebHandleSheet(
   BuildContext context, {
   Future<void> Function()? onNative,
   Future<void> Function()? onTerminal,
+  Future<void> Function()? onFiles,
 }) => showAppSheet<void>(
   context,
-  builder: (_) => _HandleSheet(onNative: onNative, onTerminal: onTerminal),
+  builder: (_) => _HandleSheet(onNative: onNative, onTerminal: onTerminal, onFiles: onFiles),
 );
 
 class _HandleSheet extends ConsumerWidget {
-  const _HandleSheet({required this.onNative, required this.onTerminal});
+  const _HandleSheet({required this.onNative, required this.onTerminal, required this.onFiles});
 
   final Future<void> Function()? onNative;
   final Future<void> Function()? onTerminal;
+  final Future<void> Function()? onFiles;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -160,6 +168,17 @@ class _HandleSheet extends ConsumerWidget {
                   onTap: () {
                     navigator.pop();
                     unawaited(terminal());
+                  },
+                ),
+              if (onFiles case final files?)
+                SettingsTile(
+                  key: const ValueKey('web-handle-files'),
+                  icon: AppIcons.files,
+                  tinted: false,
+                  title: context.l10n.botsFiles,
+                  onTap: () {
+                    navigator.pop();
+                    unawaited(files());
                   },
                 ),
               SettingsTile(

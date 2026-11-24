@@ -44,6 +44,7 @@ import '../common/discard_guard.dart';
 import '../common/empty_view.dart';
 import '../companion/companion_tasks_page.dart';
 import '../companion/companion_page.dart';
+import '../files/files_page.dart';
 import '../forum/forum_link_host.dart';
 import '../notify/chat_alert_host.dart';
 import '../pets/pet_settings_page.dart';
@@ -160,7 +161,8 @@ class _WebHomeState extends ConsumerState<WebHome> {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(problems.first)));
   }
 
-  Widget _handle(double size) => WebHandleButton(size: size, onTerminal: _openTerminal);
+  Widget _handle(double size) =>
+      WebHandleButton(size: size, onTerminal: _openTerminal, onFiles: _openFiles);
 
   /// 终端: the conversation's shell, full screen, as the native interface has
   /// it. Nothing to open while the page shows no conversation.
@@ -168,6 +170,15 @@ class _WebHomeState extends ConsumerState<WebHome> {
     final id = _webSession;
     if (id == null || id.isEmpty || !mounted) return;
     await Navigator.of(context, rootNavigator: true).push(TerminalPage.route(id));
+  }
+
+  /// 文件: that conversation's workspace as the native list page — the page's
+  /// own file panel stays where it is, this is the one that also shows what the
+  /// agent wrote outside a turn.
+  Future<void> _openFiles() async {
+    final id = _webSession;
+    if (id == null || id.isEmpty || !mounted) return;
+    await Navigator.of(context, rootNavigator: true).push(WorkspaceFilesPage.route(id));
   }
 
   @override
