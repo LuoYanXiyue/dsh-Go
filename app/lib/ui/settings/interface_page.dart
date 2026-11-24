@@ -12,6 +12,7 @@ import '../../state/engine_settings_state.dart';
 import '../../state/quick_panel_state.dart';
 import '../../state/settings_state.dart';
 import '../../state/table_tint_state.dart';
+import '../../state/ui_mode_state.dart';
 import '../engine_settings/namespace_copy.dart';
 import '../engine_settings/schema_form.dart';
 import '../shell/page_frame.dart';
@@ -36,9 +37,24 @@ class InterfacePage extends ConsumerWidget {
     final tableTint = ref.watch(tableTintProvider);
     final engine = ref.watch(engineSettingsProvider).value;
     final quickPanel = ref.watch(quickPanelProvider);
+    final mode = ref.watch(uiModeProvider);
     return AppPage.list(
       title: l10n.hubSettingsInterface,
       children: [
+        // 简报 §2.5: 软件层主页 is the default face; this is the switch that
+        // makes the app open straight into the page instead.
+        SettingsSection(
+          title: l10n.hubEngineStartup,
+          children: [
+            SettingsSwitchTile(
+              key: const ValueKey('launch-direct'),
+              title: l10n.lobbyDirect,
+              subtitle: l10n.lobbyDirectHint,
+              value: mode.web,
+              onChanged: (v) => unawaited(ref.read(uiModeProvider.notifier).set(v ? UiMode.web : UiMode.native)),
+            ),
+          ],
+        ),
         SettingsSection(
           title: l10n.commonWeb,
           spot: Spots.webApp,

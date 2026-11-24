@@ -14,7 +14,7 @@ import '../../runtime/android_background_turns.dart';
 import '../../state/sessions_state.dart';
 import '../../state/ui_mode_state.dart';
 import '../modes/mode_switch.dart';
-import '../shell/home_shell.dart';
+import '../lobby/lobby_home.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -60,7 +60,7 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
             key: const ValueKey(UiMode.web),
             child: widget.web?.call(_handoff) ?? WebHome(initial: _handoff),
           )
-        : KeyedSubtree(key: const ValueKey(UiMode.native), child: widget.native ?? const HomeShell());
+        : KeyedSubtree(key: const ValueKey(UiMode.native), child: widget.native ?? const LobbyHome());
     // A launch into 伙伴 or 酒馆 opens that page over the home first.
     return ModeLaunch(
       child: AnimatedSwitcher(

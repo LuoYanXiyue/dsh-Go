@@ -49,9 +49,16 @@ class UiModeController extends Notifier<UiModeState> {
   }
 
   Future<void> _load() async {
-    // 这是手机版: the official web app is the whole interface, so there is no
-    // stored choice to read back — the interface cannot be anything else.
-    if (!state.loaded) state = const UiModeState(mode: UiMode.web, loaded: true);
+    // 软件层主页 is where a fresh install starts (简报 §2.5): 启动后直接进对话
+    // is a switch the user turns on, not the shipped default.
+    var mode = UiMode.native;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString(key);
+      if (stored != null) mode = UiMode.values.firstWhere((m) => m.name == stored, orElse: () => mode);
+    } catch (_) {}
+    // 读盘期间用户已经切过：以那次为准。
+    if (!state.loaded) state = UiModeState(mode: mode, loaded: true);
   }
 
   /// Switches and remembers it for the next launch.

@@ -76,9 +76,9 @@ OnboardingStep? initialOnboardingStep({
     if (status.phase == RuntimePhase.installing) return OnboardingStep.runtime;
     // Runs without it (also after leaving a failed upgrade for a remote host).
     if (prefs.localDeclined) return null;
-    // An upgrade (an older rootfs exists) skips the welcome and the choice.
-    if (!runtimeStepAsks(status)) return OnboardingStep.runtime;
-    return prefs.welcomeSeen ? OnboardingStep.runtime : OnboardingStep.welcome;
+    // 简报 §0: dsh-go 的欢迎页（想怎么用：本机 / 远程 / 角色聊天）永远不出现，
+    // 首装直接进装运行时这一步。
+    return OnboardingStep.runtime;
   }
   if (!hasApiKey && !hasCustomProvider && !prefs.keySkipped) return OnboardingStep.apiKey;
   return null;

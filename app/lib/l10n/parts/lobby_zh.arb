@@ -1,0 +1,10 @@
+{
+  "lobbyStart": "开始对话",
+  "lobbyEngine": "引擎",
+  "lobbyEngineRunning": "运行中",
+  "lobbyEngineStopped": "已停止",
+  "lobbyTerminalHint": "开始一个对话后可用",
+  "lobbyDiagnostics": "诊断",
+  "lobbyDirect": "启动后直接进对话",
+  "lobbyDirectHint": "打开 App 就进入网页对话；关掉则先到这个主页"
+}
